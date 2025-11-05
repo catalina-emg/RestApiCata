@@ -1,0 +1,13 @@
+<IfModule mod_authz_core.c>
+    # Apache 2.4+: denegar todo acceso a este directorio
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    # Apache 2.2: alternativa compatible
+    Order allow,deny
+    Deny from all
+</IfModule>
+
+# Evitar listado de directorios
+Options -Indexes

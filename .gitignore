@@ -1,0 +1,16 @@
+# Ignorar logs y archivos temporales
+/logs/
+*.log
+# Entornos de editor/IDE
+.vscode/
+.idea/
+# Archivos sensibles / de entorno
+.env
+# Node / Composer / vendor
+node_modules/
+vendor/
+# Sistema
+Thumbs.db
+.DS_Store
+
+usuarios.sql
