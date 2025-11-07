@@ -2,6 +2,7 @@
 // api/routes.php
 
 // Cargar todos los controladores y middleware
+require_once __DIR__ . '/middleware/CorsMiddleware.php';
 require_once __DIR__ . '/controllers/UsuariosController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/StatsController.php';
