@@ -33,6 +33,10 @@ $aliases = [
 
 $resource = $aliases[$uri] ?? $uri;
 
+// Detectar si es una ruta /usuarios/{id}
+$isUserById = preg_match('#^usuarios/(\d+)$#', $uri, $matches);
+$userId = $isUserById ? $matches[1] : null;
+
 Logger::info("Request: $method /$uri -> resolved to resource '$resource'");
 
 try {
@@ -58,46 +62,55 @@ try {
             break;
 
         // ==================== RUTAS PROTEGIDAS ====================
-        case $resource === 'usuarios' && $method === 'GET':
-            // Proteger con autenticación
+        case $resource === 'usuarios' && $method === 'GET' && !$userId:
+            // GET /usuarios - Listar todos
             AuthMiddleware::authenticate();
             $controller = new UsuariosController();
             $controller->getAll();
             break;
 
+        case $isUserById && $method === 'GET':
+            // GET /usuarios/{id} - Obtener usuario específico
+            AuthMiddleware::authenticate();
+            $controller = new UsuariosController();
+            $controller->getById($userId);
+            break;
+
         case $resource === 'usuarios' && $method === 'POST':
-            // Proteger con autenticación
+            // POST /usuarios - Crear usuario
             AuthMiddleware::authenticate();
             $controller = new UsuariosController();
             $controller->create();
             break;
 
         case $resource === 'usuarios' && $method === 'PATCH':
-            // Proteger con autenticación
+            // PATCH /usuarios - Actualizar usuario
             AuthMiddleware::authenticate();
             $controller = new UsuariosController();
             $controller->update();
             break;
 
         case $resource === 'usuarios' && $method === 'DELETE':
-            // Proteger con autenticación - Solo admin
+            // DELETE /usuarios - Eliminar usuario (solo admin)
             AuthMiddleware::requireAdmin();
             $controller = new UsuariosController();
             $controller->delete();
             break;
 
         case $resource === 'auth/profile' && $method === 'GET':
+            // GET /auth/profile - Perfil del usuario autenticado
             $authController = new AuthController();
             $authController->profile();
             break;
 
         case $resource === 'auth/logout' && $method === 'POST':
+            // POST /auth/logout - Cerrar sesión
             $authController = new AuthController();
             $authController->logout();
             break;
 
         case $resource === 'logevent' && $method === 'POST':
-            // Proteger logevent con autenticación
+            // POST /logevent - Registrar evento
             AuthMiddleware::authenticate();
             $input = json_decode(file_get_contents('php://input'), true);
             $nombre = isset($input['nombre']) ? trim($input['nombre']) : '';
@@ -116,7 +129,21 @@ try {
             echo json_encode([
                 "error" => "Ruta no encontrada", 
                 "ruta" => $uri,
-                "method" => $method
+                "method" => $method,
+                "available_routes" => [
+                    "PUBLIC: POST /auth/register",
+                    "PUBLIC: POST /auth/login", 
+                    "PUBLIC: GET /auth/verify",
+                    "PUBLIC: GET /stats",
+                    "PROTECTED: GET /usuarios",
+                    "PROTECTED: GET /usuarios/{id}",
+                    "PROTECTED: POST /usuarios",
+                    "PROTECTED: PATCH /usuarios", 
+                    "ADMIN ONLY: DELETE /usuarios",
+                    "PROTECTED: GET /auth/profile",
+                    "PROTECTED: POST /auth/logout",
+                    "PROTECTED: POST /logevent"
+                ]
             ]);
             break;
     }
