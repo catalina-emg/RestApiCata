@@ -1,25 +1,20 @@
 <?php
 // api/routes.php
 
-// Cargar todos los controladores y middleware
+// Cargar todos los controladores, middleware y configuraciones
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/logger.php';
+require_once __DIR__ . '/config/auth.php';
+require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/middleware/CorsMiddleware.php';
+require_once __DIR__ . '/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/controllers/UsuariosController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/StatsController.php';
-require_once __DIR__ . '/middleware/AuthMiddleware.php';
-require_once __DIR__ . '/config/logger.php';
+require_once __DIR__ . '/controllers/ProfileController.php';
 
-// Configurar headers CORS básicos
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Authorization, Content-Type");
-header("Content-Type: application/json; charset=UTF-8");
-
-// Manejar preflight OPTIONS
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+// Configurar CORS usando la configuración centralizada
+CorsConfig::simpleCors(); // Para desarrollo - usar applyCorsHeaders() en producción
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $uri = preg_replace('#^.*/api/#', '', $uri);
@@ -61,7 +56,32 @@ try {
             StatsController::handler();
             break;
 
-        // ==================== RUTAS PROTEGIDAS ====================
+        // ==================== RUTAS DE PERFIL ====================
+        case $resource === 'profile' && $method === 'GET':
+            // GET /profile - Obtener perfil del usuario autenticado
+            $profileController = new ProfileController();
+            $profileController->getProfile();
+            break;
+
+        case $resource === 'profile' && $method === 'PATCH':
+            // PATCH /profile - Actualizar perfil
+            $profileController = new ProfileController();
+            $profileController->updateProfile();
+            break;
+
+        case $resource === 'profile/change-password' && $method === 'POST':
+            // POST /profile/change-password - Cambiar contraseña
+            $profileController = new ProfileController();
+            $profileController->changePassword();
+            break;
+
+        case $resource === 'profile/stats' && $method === 'GET':
+            // GET /profile/stats - Estadísticas del usuario
+            $profileController = new ProfileController();
+            $profileController->getUserStats();
+            break;
+
+        // ==================== RUTAS DE USUARIOS (PROTEGIDAS) ====================
         case $resource === 'usuarios' && $method === 'GET' && !$userId:
             // GET /usuarios - Listar todos
             AuthMiddleware::authenticate();
@@ -97,8 +117,9 @@ try {
             $controller->delete();
             break;
 
+        // ==================== RUTAS DE AUTENTICACIÓN ====================
         case $resource === 'auth/profile' && $method === 'GET':
-            // GET /auth/profile - Perfil del usuario autenticado
+            // GET /auth/profile - Perfil del usuario autenticado (alternativa)
             $authController = new AuthController();
             $authController->profile();
             break;
@@ -109,6 +130,7 @@ try {
             $authController->logout();
             break;
 
+        // ==================== RUTAS DE LOGS ====================
         case $resource === 'logevent' && $method === 'POST':
             // POST /logevent - Registrar evento
             AuthMiddleware::authenticate();
@@ -117,16 +139,42 @@ try {
             if ($nombre === '' || !preg_match('/^[\p{L}\s]+$/u', $nombre)) {
                 http_response_code(400);
                 Logger::warn("Intento de log_event invalido: $nombre");
-                echo json_encode(["error" => "Nombre invalido"]);
+                echo json_encode([
+                    "success" => false,
+                    "error" => "Nombre invalido"
+                ]);
             } else {
                 Logger::info("Evento usuario: " . json_encode($input));
-                echo json_encode(["success" => true]);
+                echo json_encode([
+                    "success" => true,
+                    "message" => "Evento registrado correctamente"
+                ]);
             }
+            break;
+
+        // ==================== RUTAS DE CONFIGURACIÓN ====================
+        case $resource === 'config/auth' && $method === 'GET':
+            // GET /config/auth - Obtener configuración de autenticación (solo admin)
+            AuthMiddleware::requireAdmin();
+            echo json_encode([
+                'success' => true,
+                'config' => AuthConfig::getConfig()
+            ]);
+            break;
+
+        case $resource === 'config/cors' && $method === 'GET':
+            // GET /config/cors - Obtener configuración CORS (solo admin)
+            AuthMiddleware::requireAdmin();
+            echo json_encode([
+                'success' => true,
+                'config' => CorsConfig::getConfig()
+            ]);
             break;
 
         default:
             http_response_code(404);
             echo json_encode([
+                "success" => false,
                 "error" => "Ruta no encontrada", 
                 "ruta" => $uri,
                 "method" => $method,
@@ -135,11 +183,17 @@ try {
                     "PUBLIC: POST /auth/login", 
                     "PUBLIC: GET /auth/verify",
                     "PUBLIC: GET /stats",
+                    "PROTECTED: GET /profile",
+                    "PROTECTED: PATCH /profile", 
+                    "PROTECTED: POST /profile/change-password",
+                    "PROTECTED: GET /profile/stats",
                     "PROTECTED: GET /usuarios",
                     "PROTECTED: GET /usuarios/{id}",
                     "PROTECTED: POST /usuarios",
                     "PROTECTED: PATCH /usuarios", 
                     "ADMIN ONLY: DELETE /usuarios",
+                    "ADMIN ONLY: GET /config/auth",
+                    "ADMIN ONLY: GET /config/cors",
                     "PROTECTED: GET /auth/profile",
                     "PROTECTED: POST /auth/logout",
                     "PROTECTED: POST /logevent"
@@ -151,6 +205,7 @@ try {
     http_response_code(500);
     Logger::error("Error en routes: " . $e->getMessage());
     echo json_encode([
+        "success" => false,
         "error" => "Error interno del servidor",
         "message" => $e->getMessage()
     ]);
