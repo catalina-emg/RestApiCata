@@ -43,18 +43,154 @@
       border: 1px solid #334155;
       border-radius: 8px;
     }
+    .user-badge {
+      background: linear-gradient(135deg, #059669, #0d9488);
+      border-radius: 20px;
+      padding: 8px 16px;
+    }
   </style>
 </head>
 <body class="text-slate-200">
   <div class="max-w-7xl mx-auto p-4">
-    <!-- Header -->
-    <header class="text-center mb-12">
+    <!-- Header con información de usuario -->
+    <header class="text-center mb-12 relative">
       <div class="inline-block p-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
         <h1 class="text-5xl font-black text-white glow-text">⚡ CATALINA API</h1>
       </div>
       <p class="text-slate-400 text-xl">Sistema de Gestión de Usuarios - Panel de Administración</p>
+      
+      <!-- Información del usuario en esquina superior derecha -->
+      <div id="userInfo" class="absolute top-0 right-0 flex items-center gap-4">
+        <div id="userBadge" class="user-badge text-white font-semibold hidden">
+          <span id="userName">Usuario</span> - <span id="userRole">Rol</span>
+        </div>
+        <button id="loginBtn" onclick="showLoginModal()" 
+                class="btn-primary text-white py-2 px-4 rounded-lg font-semibold">
+          🔑 Iniciar Sesión
+        </button>
+        <button id="logoutBtn" onclick="logout()" 
+                class="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-all hidden">
+          🚪 Cerrar Sesión
+        </button>
+      </div>
     </header>
 
+    <!-- Modal de Login -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+      <div class="neo-card p-8 w-full max-w-md mx-4">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-bold text-white">Iniciar Sesión</h2>
+          <p class="text-slate-400 mt-2">Ingresa tus credenciales</p>
+        </div>
+
+        <form id="loginForm" onsubmit="event.preventDefault(); login();">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2 text-slate-300">Email</label>
+              <input id="loginEmail" type="email" 
+                class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="tu@email.com" required>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium mb-2 text-slate-300">Contraseña</label>
+              <input id="loginPassword" type="password"
+                class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="••••••••" required>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button type="submit" class="btn-primary text-white py-3 px-6 rounded-xl font-bold flex-1 flex items-center justify-center gap-2">
+                <span>🔑</span>
+                Iniciar Sesión
+              </button>
+              <button type="button" onclick="hideLoginModal()" 
+                class="bg-slate-700 text-white py-3 px-4 rounded-xl font-bold hover:bg-slate-600 transition-all">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <p id="loginError" class="mt-4 text-red-400 text-sm text-center"></p>
+
+        <div class="text-center mt-4">
+          <p class="text-slate-400 text-sm">
+            ¿No tienes cuenta? 
+            <a href="#" onclick="showRegisterModal()" class="text-purple-400 hover:text-purple-300 font-semibold">Regístrate aquí</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Registro -->
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+      <div class="neo-card p-8 w-full max-w-md mx-4">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-bold text-white">Crear Cuenta</h2>
+          <p class="text-slate-400 mt-2">Registra tu nueva cuenta</p>
+        </div>
+
+        <form id="registerForm" onsubmit="event.preventDefault(); register();">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2 text-slate-300">Nombre Completo</label>
+              <input id="regNombre" type="text" 
+                class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Ej: Carlos Mendoza" required>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium mb-2 text-slate-300">Email</label>
+              <input id="regEmail" type="email"
+                class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="tu@email.com" required>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2 text-slate-300">Contraseña</label>
+              <input id="regPassword" type="password"
+                class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Mínimo 6 caracteres" required minlength="6">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2 text-slate-300">Edad</label>
+                <input id="regEdad" type="number" min="0"
+                  class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Edad" required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2 text-slate-300">Rol</label>
+                <select id="regRol" class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                  <option value="">Selecciona rol</option>
+                  <option value="usuario">Usuario</option>
+                  <option value="administrador">Administrador</option>
+                  <option value="desarrollador">Desarrollador</option>
+                  <option value="analista">Analista</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button type="submit" class="btn-primary text-white py-3 px-6 rounded-xl font-bold flex-1 flex items-center justify-center gap-2">
+                <span>🚀</span>
+                Registrarse
+              </button>
+              <button type="button" onclick="showLoginModal()" 
+                class="bg-slate-700 text-white py-3 px-4 rounded-xl font-bold hover:bg-slate-600 transition-all">
+                ↩ Volver
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <p id="registerError" class="mt-4 text-red-400 text-sm text-center"></p>
+      </div>
+    </div>
+
+    <!-- [TODO EL RESTO DE TU CONTENIDO ACTUAL SE MANTIENE IGUAL] -->
     <!-- Main Grid -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
       
@@ -62,7 +198,7 @@
       <div class="neo-card p-6 xl:col-span-2">
         <h2 class="text-2xl font-bold mb-6 text-white flex items-center gap-3">
           <span class="p-2 bg-purple-600 rounded-lg">🎮</span>
-        Central
+          Panel de Control
         </h2>
         <div class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,6 +398,177 @@
       <p>© 2024 Panel de Administración - Todos los derechos reservados</p>
     </footer>
   </div>
+
+  <script>
+    // Sistema de autenticación
+    let authToken = localStorage.getItem('authToken');
+    let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    // Verificar sesión al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+      updateUserInterface();
+      if (authToken) {
+        verifyToken();
+      }
+    });
+
+    // Actualizar interfaz según estado de autenticación
+    function updateUserInterface() {
+      const userBadge = document.getElementById('userBadge');
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      if (currentUser && authToken) {
+        // Usuario logueado
+        userBadge.classList.remove('hidden');
+        loginBtn.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+        document.getElementById('userName').textContent = currentUser.nombre;
+        document.getElementById('userRole').textContent = currentUser.rol;
+      } else {
+        // Usuario no logueado
+        userBadge.classList.add('hidden');
+        loginBtn.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+      }
+    }
+
+    // Funciones de autenticación (las mismas del código anterior)
+    async function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const errorElement = document.getElementById('loginError');
+
+      try {
+        const response = await fetch('/rest-api-catalina/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          authToken = data.token;
+          currentUser = data.user;
+          localStorage.setItem('authToken', authToken);
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          updateUserInterface();
+          hideLoginModal();
+          document.getElementById('loginForm').reset();
+          errorElement.textContent = '';
+        } else {
+          errorElement.textContent = data.error || 'Error en el login';
+        }
+      } catch (error) {
+        errorElement.textContent = 'Error de conexión';
+      }
+    }
+
+    async function register() {
+      const nombre = document.getElementById('regNombre').value;
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      const edad = document.getElementById('regEdad').value;
+      const rol = document.getElementById('regRol').value;
+      const errorElement = document.getElementById('registerError');
+
+      try {
+        const response = await fetch('/rest-api-catalina/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, email, password, edad, rol })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          errorElement.textContent = '¡Registro exitoso! Ahora inicia sesión.';
+          errorElement.className = 'mt-4 text-green-400 text-sm text-center';
+          setTimeout(() => {
+            showLoginModal();
+            document.getElementById('registerForm').reset();
+          }, 2000);
+        } else {
+          errorElement.textContent = data.error || 'Error en el registro';
+          errorElement.className = 'mt-4 text-red-400 text-sm text-center';
+        }
+      } catch (error) {
+        errorElement.textContent = 'Error de conexión';
+      }
+    }
+
+    async function verifyToken() {
+      try {
+        const response = await fetch('/rest-api-catalina/api/auth/verify', {
+          method: 'GET',
+          headers: {
+            'Authorization': 'Bearer ' + authToken,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+        if (!data.success) throw new Error('Token inválido');
+        
+        currentUser = data.user;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateUserInterface();
+      } catch (error) {
+        logout();
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('/rest-api-catalina/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + authToken,
+            'Content-Type': 'application/json'
+          }
+        });
+      } catch (error) {
+        console.error('Error en logout:', error);
+      } finally {
+        authToken = null;
+        currentUser = null;
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        updateUserInterface();
+      }
+    }
+
+    // Funciones de modales
+    function showLoginModal() {
+      document.getElementById('loginModal').classList.remove('hidden');
+      document.getElementById('registerError').textContent = '';
+    }
+
+    function hideLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+      document.getElementById('loginError').textContent = '';
+      document.getElementById('loginForm').reset();
+    }
+
+    function showRegisterModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+      document.getElementById('registerModal').classList.remove('hidden');
+      document.getElementById('loginError').textContent = '';
+    }
+
+    // Cerrar modales al hacer click fuera
+    document.getElementById('loginModal').addEventListener('click', function(e) {
+      if (e.target === this) hideLoginModal();
+    });
+
+    document.getElementById('registerModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.add('hidden');
+        showLoginModal();
+      }
+    });
+  </script>
 
   <script src="/rest-api-catalina/script.js"></script>
 </body>
