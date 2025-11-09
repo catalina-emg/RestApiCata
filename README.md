@@ -527,4 +527,4 @@ Content-Type: application/json
 
 ## 🔗 Repositorio
 
-**GitHub**: [Enlaza tu repositorio GitHub aquí]
+**GitHub**: https://github.com/catalina-emg/RestApiCata.git
