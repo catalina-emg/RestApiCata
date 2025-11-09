@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Catalina API</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+    }
+    .neo-card {
+      background: #1e293b;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #c026d3);
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+    }
+    .glow-text {
+      text-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+    }
+  </style>
+</head>
+<body class="text-slate-200">
+  <!-- Sección de Login -->
+  <div id="loginSection" class="min-h-screen flex items-center justify-center p-4">
+    <div class="neo-card p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="inline-block p-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
+          <h1 class="text-3xl font-black text-white glow-text">⚡ CATALINA API</h1>
+        </div>
+        <p class="text-slate-400">Inicia sesión en tu cuenta</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium mb-2 text-slate-300">Email</label>
+            <input id="loginEmail" type="email" 
+              class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="tu@email.com" required>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2 text-slate-300">Contraseña</label>
+            <input id="loginPassword" type="password"
+              class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="••••••••" required>
+          </div>
+
+          <button type="submit" class="btn-primary text-white py-3 px-6 rounded-xl font-bold w-full flex items-center justify-center gap-2">
+            <span>🔑</span>
+            Iniciar Sesión
+          </button>
+
+          <div class="text-center">
+            <p class="text-slate-400 text-sm">
+              ¿No tienes cuenta? 
+              <a href="#" id="showRegisterLink" class="text-purple-400 hover:text-purple-300 font-semibold">Regístrate aquí</a>
+            </p>
+          </div>
+        </div>
+      </form>
+
+      <p id="loginError" class="mt-4 text-red-400 text-sm text-center"></p>
+    </div>
+  </div>
+
+  <!-- Sección de Registro -->
+  <div id="registerSection" class="min-h-screen hidden items-center justify-center p-4">
+    <div class="neo-card p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="inline-block p-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
+          <h1 class="text-3xl font-black text-white glow-text">⚡ REGISTRO</h1>
+        </div>
+        <p class="text-slate-400">Crea tu cuenta nueva</p>
+      </div>
+
+      <form id="registerForm">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2 text-slate-300">Nombre Completo</label>
+            <input id="regNombre" type="text" 
+              class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="Ej: Carlos Mendoza" required>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2 text-slate-300">Email</label>
+            <input id="regEmail" type="email"
+              class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="tu@email.com" required>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2 text-slate-300">Contraseña</label>
+            <input id="regPassword" type="password"
+              class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="Mínimo 6 caracteres" required minlength="6">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2 text-slate-300">Edad</label>
+              <input id="regEdad" type="number" min="0"
+                class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Edad" required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2 text-slate-300">Rol</label>
+              <select id="regRol" class="w-full p-3 rounded-lg bg-slate-800 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                <option value="">Selecciona rol</option>
+                <option value="usuario">Usuario</option>
+                <option value="administrador">Administrador</option>
+                <option value="desarrollador">Desarrollador</option>
+                <option value="analista">Analista</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button type="submit" class="btn-primary text-white py-3 px-6 rounded-xl font-bold flex-1 flex items-center justify-center gap-2">
+              <span>🚀</span>
+              Registrarse
+            </button>
+            <button type="button" id="backToLogin" class="bg-slate-700 text-white py-3 px-4 rounded-xl font-bold hover:bg-slate-600 transition-all">
+              ↩ Volver
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <p id="registerError" class="mt-4 text-red-400 text-sm text-center"></p>
+    </div>
+  </div>
+
+  <script>
+    // Configuración base de la API
+    const API_BASE_URL = 'http://localhost:81/restapicata/api';
+
+    // Función de login
+    async function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const errorElement = document.getElementById('loginError');
+
+      // Limpiar error anterior
+      errorElement.textContent = '';
+
+      try {
+        console.log('Intentando login...');
+        
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        console.log('Status:', response.status);
+        
+        // Obtener el texto de la respuesta para debug
+        const responseText = await response.text();
+        console.log('Respuesta completa:', responseText);
+
+        // Intentar parsear como JSON
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error('No se pudo parsear JSON:', e);
+          throw new Error(`La API devolvió HTML en lugar de JSON. Revisa tu backend.`);
+        }
+
+        if (data.success) {
+          // Guardar token y redirigir al index
+          localStorage.setItem('authToken', data.token);
+          localStorage.setItem('currentUser', JSON.stringify(data.user));
+          window.location.href = 'index.html';
+        } else {
+          errorElement.textContent = data.error || 'Error en el login';
+        }
+      } catch (error) {
+        console.error('Error de login completo:', error);
+        errorElement.textContent = `Error: ${error.message}`;
+      }
+    }
+
+    // Función de registro
+    async function register() {
+      const nombre = document.getElementById('regNombre').value;
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      const edad = document.getElementById('regEdad').value;
+      const rol = document.getElementById('regRol').value;
+      const errorElement = document.getElementById('registerError');
+
+      errorElement.textContent = '';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ nombre, email, password, edad, rol })
+        });
+
+        const responseText = await response.text();
+        console.log('Respuesta registro:', responseText);
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          throw new Error(`La API devolvió HTML en lugar de JSON. Revisa tu backend.`);
+        }
+
+        if (data.success) {
+          errorElement.textContent = '¡Registro exitoso! Ahora puedes iniciar sesión.';
+          errorElement.className = 'mt-4 text-green-400 text-sm text-center';
+          setTimeout(() => {
+            showLogin();
+          }, 2000);
+        } else {
+          errorElement.textContent = data.error || 'Error en el registro';
+          errorElement.className = 'mt-4 text-red-400 text-sm text-center';
+        }
+      } catch (error) {
+        console.error('Error de registro:', error);
+        errorElement.textContent = `Error: ${error.message}`;
+        errorElement.className = 'mt-4 text-red-400 text-sm text-center';
+      }
+    }
+
+    // Funciones para mostrar/ocultar secciones - CORREGIDAS
+    function showLogin() {
+      document.getElementById('loginSection').classList.remove('hidden');
+      document.getElementById('registerSection').classList.add('hidden');
+      document.getElementById('registerError').textContent = '';
+      document.getElementById('registerForm').reset();
+    }
+
+    function showRegister() {
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('registerSection').classList.remove('hidden');
+      document.getElementById('loginError').textContent = '';
+      document.getElementById('loginForm').reset();
+    }
+
+    // Inicialización cuando el DOM está listo
+    document.addEventListener('DOMContentLoaded', function() {
+      // Verificar si ya está logueado
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // Configurar event listeners
+      document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        login();
+      });
+
+      document.getElementById('registerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        register();
+      });
+
+      document.getElementById('showRegisterLink').addEventListener('click', function(e) {
+        e.preventDefault();
+        showRegister();
+      });
+
+      document.getElementById('backToLogin').addEventListener('click', function(e) {
+        e.preventDefault();
+        showLogin();
+      });
+
+      // Mostrar login por defecto
+      showLogin();
+    });
+  </script>
+</body>
+</html>

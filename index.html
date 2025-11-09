@@ -43,26 +43,63 @@
       border: 1px solid #334155;
       border-radius: 8px;
     }
+    .user-badge {
+      border-radius: 12px;
+      padding: 8px 16px;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .header-glow {
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+    }
   </style>
 </head>
 <body class="text-slate-200">
   <div class="max-w-7xl mx-auto p-4">
-    <!-- Header -->
-    <header class="text-center mb-12">
-      <div class="inline-block p-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
-        <h1 class="text-5xl font-black text-white glow-text">⚡ CATALINA API</h1>
+    
+    <!-- NUEVO ENCABEZADO MODERNO -->
+    <header class="mb-12">
+      <div class="flex items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700 header-glow">
+        <!-- Logo a la izquierda -->
+        <div class="flex items-center gap-4">
+          <div class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600">
+            <div class="text-2xl">⚡</div>
+          </div>
+          <div>
+            <h1 class="text-2xl font-black text-white glow-text">CATALINA API</h1>
+            <p class="text-slate-400 text-sm">Sistema de Gestión de Usuarios</p>
+          </div>
+        </div>
+
+        <!-- Información del usuario a la derecha -->
+        <div class="flex items-center gap-4">
+          <div id="userBadge" class="user-badge text-white flex items-center gap-3">
+            <div class="flex flex-col items-end">
+              <span id="userName" class="text-sm font-semibold">Usuario</span>
+              <span id="userRole" class="text-xs text-slate-300">Rol</span>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+              <span id="userInitial">U</span>
+            </div>
+          </div>
+          <button onclick="logout()" 
+                  class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-semibold transition-all flex items-center gap-2">
+            <span>🚪</span>
+            <span class="hidden sm:inline">Cerrar Sesión</span>
+          </button>
+        </div>
       </div>
-      <p class="text-slate-400 text-xl">Sistema de Gestión de Usuarios - Panel de Administración</p>
     </header>
 
-    <!-- Main Grid -->
+    <!-- El resto de tu contenido se mantiene igual -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
       
       <!-- Panel de Control -->
       <div class="neo-card p-6 xl:col-span-2">
         <h2 class="text-2xl font-bold mb-6 text-white flex items-center gap-3">
           <span class="p-2 bg-purple-600 rounded-lg">🎮</span>
-        Central
+          Panel de Control
         </h2>
         <div class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -263,6 +300,317 @@
     </footer>
   </div>
 
-  <script src="/rest-api-catalina/script.js"></script>
+    <script>
+    // Configuración base de la API - CORREGIDA para puerto 81
+    const API_BASE_URL = 'http://localhost:81/restapicata/api';
+
+    // Sistema de autenticación para index.html
+    let authToken = localStorage.getItem('authToken');
+    let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    // Verificar sesión al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!authToken || !currentUser) {
+            // Redirigir al login si no hay sesión
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        // Mostrar información del usuario
+        document.getElementById('userName').textContent = currentUser.nombre;
+        document.getElementById('userRole').textContent = currentUser.rol;
+        
+        // Aplicar permisos según el rol
+        applyRolePermissions(currentUser.rol);
+    });
+
+    // Función para aplicar permisos según el rol - CORREGIDA
+    function applyRolePermissions(userRole) {
+        console.log('Aplicando permisos para rol:', userRole);
+        
+        // Encontrar las secciones CORRECTAMENTE usando IDs específicos
+        const createUserCard = document.querySelector('.neo-card:nth-child(2)'); // Segunda tarjeta
+        const updateUserCard = document.querySelector('.xl\\:grid-cols-2 .neo-card:first-child'); // Primera tarjeta de la segunda fila
+        const deleteUserCard = document.querySelector('.xl\\:grid-cols-2 .neo-card:last-child'); // Segunda tarjeta de la segunda fila
+        
+        console.log('Secciones encontradas:', {
+            create: !!createUserCard,
+            update: !!updateUserCard, 
+            delete: !!deleteUserCard
+        });
+
+        // Solo administradores pueden crear, actualizar y eliminar
+        if (userRole !== 'administrador') {
+            if (createUserCard) {
+                createUserCard.innerHTML = `
+                    <div class="text-center p-8">
+                        <div class="text-4xl mb-4">🔒</div>
+                        <h3 class="text-xl font-bold text-white mb-2">Acceso Restringido</h3>
+                        <p class="text-slate-400">Se requieren privilegios de administrador para crear usuarios</p>
+                        <p class="text-slate-500 text-sm mt-2">Tu rol actual: <strong>${userRole}</strong></p>
+                    </div>
+                `;
+            }
+            
+            if (updateUserCard) {
+                updateUserCard.innerHTML = `
+                    <div class="text-center p-8">
+                        <div class="text-4xl mb-4">🔒</div>
+                        <h3 class="text-xl font-bold text-white mb-2">Acceso Restringido</h3>
+                        <p class="text-slate-400">Se requieren privilegios de administrador para actualizar usuarios</p>
+                        <p class="text-slate-500 text-sm mt-2">Tu rol actual: <strong>${userRole}</strong></p>
+                    </div>
+                `;
+            }
+            
+            if (deleteUserCard) {
+                deleteUserCard.innerHTML = `
+                    <div class="text-center p-8">
+                        <div class="text-4xl mb-4">🔒</div>
+                        <h3 class="text-xl font-bold text-white mb-2">Acceso Restringido</h3>
+                        <p class="text-slate-400">Se requieren privilegios de administrador para eliminar usuarios</p>
+                        <p class="text-slate-500 text-sm mt-2">Tu rol actual: <strong>${userRole}</strong></p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Cambiar color del badge según el rol
+        const userBadge = document.getElementById('userBadge');
+        if (userBadge) {
+            if (userRole === 'administrador') {
+                userBadge.style.background = 'linear-gradient(135deg, #dc2626, #ea580c)'; // Rojo para admin
+                userBadge.innerHTML = `<span>👑 ${currentUser.nombre}</span> - <span>Administrador</span>`;
+            } else if (userRole === 'desarrollador') {
+                userBadge.style.background = 'linear-gradient(135deg, #7c3aed, #c026d3)'; // Morado para desarrollador
+                userBadge.innerHTML = `<span>💻 ${currentUser.nombre}</span> - <span>Desarrollador</span>`;
+            } else {
+                userBadge.style.background = 'linear-gradient(135deg, #059669, #0d9488)'; // Verde para usuarios normales
+                userBadge.innerHTML = `<span>👤 ${currentUser.nombre}</span> - <span>Usuario</span>`;
+            }
+        }
+    }
+
+    // Función de logout - CORREGIDA
+    async function logout() {
+        try {
+            await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken,
+                    'Content-Type': 'application/json'
+                }
+            });
+        } catch (error) {
+            console.error('Error en logout:', error);
+        } finally {
+            // Limpiar datos y redirigir
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        }
+    }
+
+    // Función para hacer requests autenticados - CORREGIDA
+    async function makeAuthenticatedRequest(endpoint, options = {}) {
+        if (!authToken) {
+            window.location.href = 'login.html';
+            throw new Error('No autenticado');
+        }
+
+        const defaultOptions = {
+            headers: {
+                'Authorization': 'Bearer ' + authToken,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const mergedOptions = { ...defaultOptions, ...options };
+        const url = `${API_BASE_URL}/${endpoint}`;
+        
+        const response = await fetch(url, mergedOptions);
+        
+        // Si el token expiró, hacer logout
+        if (response.status === 401) {
+            logout();
+            throw new Error('Sesión expirada');
+        }
+
+        return response;
+    }
+
+    // Sobrescribir las funciones de tu script.js para usar autenticación
+    async function getData(endpoint) {
+        try {
+            const response = await makeAuthenticatedRequest(endpoint);
+            const data = await response.json();
+            
+            // Mostrar en consola de salida
+            const output = document.getElementById('output');
+            const resultado = document.getElementById('resultado');
+            
+            output.textContent = JSON.stringify(data, null, 2);
+            
+            if (data.success) {
+                resultado.innerHTML = '<span class="text-green-400">✅ Solicitud exitosa</span>';
+                // Si es la lista de usuarios, mostrar información del rol
+                if (endpoint === 'usuarios' && data.user_role) {
+                    resultado.innerHTML += `<br><span class="text-blue-400">Tu rol: ${data.user_role}</span>`;
+                }
+            } else {
+                resultado.innerHTML = '<span class="text-red-400">❌ Error en la solicitud</span>';
+                if (data.error && data.error.includes('administrador')) {
+                    resultado.innerHTML += `<br><span class="text-yellow-400">🔒 Se requieren privilegios de administrador</span>`;
+                }
+            }
+              
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('output').textContent = 'Error: ' + error.message;
+            document.getElementById('resultado').innerHTML = '<span class="text-red-400">❌ Error de conexión</span>';
+        }
+    }
+
+    // Funciones para los formularios - actualizadas con autenticación
+    async function createUserFromForm() {
+        // Verificar si el usuario actual es administrador
+        if (currentUser.rol !== 'administrador') {
+            document.getElementById('cu_error').textContent = '🔒 Se requieren privilegios de administrador para crear usuarios';
+            return;
+        }
+
+        const nombre = document.getElementById('cu_nombre').value;
+        const edad = document.getElementById('cu_edad').value;
+        const rol = document.getElementById('cu_rol').value;
+        const errorElement = document.getElementById('cu_error');
+
+        try {
+            const response = await makeAuthenticatedRequest('usuarios', {
+                method: 'POST',
+                body: JSON.stringify({ nombre, edad, rol })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                errorElement.textContent = '';
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+                document.getElementById('resultado').innerHTML = '<span class="text-green-400">✅ Usuario creado exitosamente</span>';
+                document.getElementById('createUserForm').reset();
+            } else {
+                errorElement.textContent = data.error || 'Error al crear usuario';
+            }
+        } catch (error) {
+            errorElement.textContent = 'Error: ' + error.message;
+        }
+    }
+
+    async function updateUserFromForm() {
+        // Verificar si el usuario actual es administrador
+        if (currentUser.rol !== 'administrador') {
+            document.getElementById('uu_error').textContent = '🔒 Se requieren privilegios de administrador para actualizar usuarios';
+            return;
+        }
+
+        const id = document.getElementById('uu_id').value;
+        const nombre = document.getElementById('uu_nombre').value;
+        const edad = document.getElementById('uu_edad').value;
+        const rol = document.getElementById('uu_rol').value;
+        const errorElement = document.getElementById('uu_error');
+
+        try {
+            const updateData = { id };
+            if (nombre) updateData.nombre = nombre;
+            if (edad) updateData.edad = edad;
+            if (rol) updateData.rol = rol;
+
+            const response = await makeAuthenticatedRequest('usuarios', {
+                method: 'PATCH',
+                body: JSON.stringify(updateData)
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                errorElement.textContent = '';
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+                document.getElementById('resultado').innerHTML = '<span class="text-green-400">✅ Usuario actualizado exitosamente</span>';
+                document.getElementById('updateUserForm').reset();
+            } else {
+                errorElement.textContent = data.error || 'Error al actualizar usuario';
+            }
+        } catch (error) {
+            errorElement.textContent = 'Error: ' + error.message;
+        }
+    }
+
+    async function deleteUserFromForm() {
+        // Verificar si el usuario actual es administrador
+        if (currentUser.rol !== 'administrador') {
+            document.getElementById('du_error').textContent = '🔒 Se requieren privilegios de administrador para eliminar usuarios';
+            return;
+        }
+
+        const id = document.getElementById('du_id').value;
+        const errorElement = document.getElementById('du_error');
+
+        try {
+            const response = await makeAuthenticatedRequest('usuarios', {
+                method: 'DELETE',
+                body: JSON.stringify({ id })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                errorElement.textContent = '';
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+                document.getElementById('resultado').innerHTML = '<span class="text-green-400">✅ Usuario eliminado exitosamente</span>';
+                document.getElementById('deleteUserForm').reset();
+            } else {
+                errorElement.textContent = data.error || 'Error al eliminar usuario';
+            }
+        } catch (error) {
+            errorElement.textContent = 'Error: ' + error.message;
+        }
+    }
+
+    async function sendLogEvent() {
+        const nombre = document.getElementById('le_nombre').value;
+        const accion = document.getElementById('le_accion').value;
+        const errorElement = document.getElementById('logEventError');
+
+        try {
+            const response = await makeAuthenticatedRequest('logevent', {
+                method: 'POST',
+                body: JSON.stringify({ nombre, accion })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                errorElement.textContent = '';
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+                document.getElementById('resultado').innerHTML = '<span class="text-green-400">✅ Evento registrado exitosamente</span>';
+                document.getElementById('le_nombre').value = '';
+                document.getElementById('le_accion').value = '';
+            } else {
+                errorElement.textContent = data.error || 'Error al registrar evento';
+            }
+        } catch (error) {
+            errorElement.textContent = 'Error: ' + error.message;
+        }
+    }
+
+    // Función para limpiar mensajes
+    function clearMessages() {
+        document.getElementById('cu_error').textContent = '';
+        document.getElementById('uu_error').textContent = '';
+        document.getElementById('du_error').textContent = '';
+        document.getElementById('logEventError').textContent = '';
+    }
+</script>
+
+  <script src="restapicata/script.js"></script>
 </body>
 </html>

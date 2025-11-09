@@ -1,5 +1,5 @@
 RewriteEngine On
-RewriteBase /rest-api-catalina/
+RewriteBase /restapicata/
 
 <Files .htaccess>
     Order allow,deny

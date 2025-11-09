@@ -25,7 +25,8 @@ class UsuariosController {
                 'success' => true,
                 'data' => $result,
                 'count' => count($result),
-                'requested_by' => $currentUser['email']
+                'requested_by' => $currentUser['email'],
+                'user_role' => $currentUser['rol'] // ← NUEVO: enviar rol al frontend
             ]);
         } catch (Exception $e) {
             Logger::error("Error en GET /usuarios: " . $e->getMessage());
@@ -38,15 +39,15 @@ class UsuariosController {
     }
 
     /**
-     * Crear usuario (requiere autenticación)
+     * Crear usuario (requiere rol de administrador)
      */
     public function create() {
         try {
-            // Verificar autenticación
-            $currentUser = AuthMiddleware::authenticate();
+            // Verificar que sea administrador
+            $currentUser = AuthMiddleware::requireAdmin();
             
             $input = json_decode(file_get_contents("php://input"), true);
-            Logger::info('POST /usuarios - Usuario: ' . $currentUser['email'] . ' - Payload: ' . json_encode($input));
+            Logger::info('POST /usuarios - Admin: ' . $currentUser['email'] . ' - Payload: ' . json_encode($input));
 
             // Validación del nombre
             $nombre = isset($input['nombre']) ? trim($input['nombre']) : '';
@@ -82,21 +83,21 @@ class UsuariosController {
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'error' => 'Error al crear usuario'
+                'error' => 'Error al crear usuario: ' . $e->getMessage()
             ]);
         }
     }
 
     /**
-     * Actualizar usuario (requiere autenticación)
+     * Actualizar usuario (requiere rol de administrador)
      */
     public function update() {
         try {
-            // Verificar autenticación
-            $currentUser = AuthMiddleware::authenticate();
+            // Verificar que sea administrador
+            $currentUser = AuthMiddleware::requireAdmin();
             
             $input = json_decode(file_get_contents("php://input"), true);
-            Logger::info('PATCH /usuarios - Usuario: ' . $currentUser['email'] . ' - Payload: ' . json_encode($input));
+            Logger::info('PATCH /usuarios - Admin: ' . $currentUser['email'] . ' - Payload: ' . json_encode($input));
             
             // Validar que tenga ID
             if (!isset($input['id'])) {
@@ -143,7 +144,7 @@ class UsuariosController {
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'error' => 'Error al actualizar usuario'
+                'error' => 'Error al actualizar usuario: ' . $e->getMessage()
             ]);
         }
     }
@@ -190,7 +191,7 @@ class UsuariosController {
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'error' => 'Error al eliminar usuario'
+                'error' => 'Error al eliminar usuario: ' . $e->getMessage()
             ]);
         }
     }
@@ -209,7 +210,9 @@ class UsuariosController {
             if ($user) {
                 echo json_encode([
                     'success' => true,
-                    'data' => $user
+                    'data' => $user,
+                    'requested_by' => $currentUser['email'],
+                    'user_role' => $currentUser['rol'] // ← NUEVO: enviar rol al frontend
                 ]);
             } else {
                 http_response_code(404);

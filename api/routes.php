@@ -1,12 +1,15 @@
 <?php
 // api/routes.php
 
-// Cargar todos los controladores, middleware y configuraciones
+// Aplicar CORS PRIMERO, antes de cualquier output
+require_once __DIR__ . '/middleware/CorsMiddleware.php';
+CorsMiddleware::simpleCors();
+
+// Ahora cargar el resto
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/logger.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/cors.php';
-require_once __DIR__ . '/middleware/CorsMiddleware.php';
 require_once __DIR__ . '/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/controllers/UsuariosController.php';
 require_once __DIR__ . '/controllers/AuthController.php';

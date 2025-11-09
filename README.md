@@ -1,517 +1,530 @@
-## Desarrollo
+# API REST Catalina - Sistema de Gestión de Usuarios
 
-### 1. Configuración del Servidor (XAMPP, BD)
+## 🎯 Objetivo General
 
-#### Instalación
-- Instalar XAMPP con Apache, MySQL y PHP
-- Iniciar servicios desde el panel de control
-- Verificar `mod_rewrite` habilitado en `httpd.conf`
+Desarrollar un **Sistema de Gestión de Usuarios con API REST** completo, modular y seguro que demuestre competencias en desarrollo full-stack con autenticación basada en tokens, autorización por roles, operaciones CRUD con soft delete, manejo de sesiones activas y logging de actividades.
 
-#### Base de Datos
+---
+
+
+## ⚙️ Instalación y Ejecución
+
+### Prerrequisitos
+- XAMPP con Apache y MySQL
+- Navegador web moderno
+- Acceso a la carpeta `htdocs` de XAMPP
+
+### Paso 1: Configuración de Base de Datos
 
 ```sql
-CREATE DATABASE rest_api_catalina CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
+-- Crear base de datos
+CREATE DATABASE rest_api_catalina;
 USE rest_api_catalina;
 
+-- Crear tabla de usuarios
 CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100),
-    rol VARCHAR(50),
-    edad INT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    edad INT NOT NULL,
+    rol VARCHAR(50) NOT NULL DEFAULT 'usuario',
+    session_token VARCHAR(255) NULL,
+    last_login TIMESTAMP NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL,
+    is_deleted BOOLEAN DEFAULT false
+);
 
-INSERT INTO usuarios (nombre, rol, edad) VALUES
-('María José González', 'admin', 28),
-('José Ángel Pérez', 'usuario', 22);
+-- Crear índices para optimización
+CREATE INDEX idx_email ON usuarios(email);
+CREATE INDEX idx_session_token ON usuarios(session_token);
+```
+
+### Paso 2: Colocar el Proyecto
+
+1. Descargar/clonar el proyecto
+2. Colocar la carpeta `restapicata` en `C:/xampp/htdocs/`
+
+### Paso 3: Verificar Configuración PHP
+
+En `api/config/db.php`, verificar:
+```php
+private $host = "localhost";
+private $db_name = "rest_api_catalina"; 
+private $username = "root";
+private $password = "";
+```
+
+En `login.html` e `index.html`, verificar:
+```javascript
+const API_BASE_URL = 'http://localhost:81/restapicata/api';
+```
+
+### Paso 4: Ejecutar
+
+1. **Iniciar XAMPP**: Apache + MySQL
+2. **Abrir en navegador**: `http://localhost:81/restapicata/login.html`
+3. **Registrar usuario** o usar credenciales de prueba
+4. **Establecer roles** en la base de datos:
+```sql
+UPDATE usuarios SET rol = 'administrador' WHERE email = 'tu@email.com';
+UPDATE usuarios SET rol = 'usuario' WHERE email = 'otro@email.com';
 ```
 
 ---
 
-### 2. Conexión PDO con Prepared Statements
+## 📋 Funcionamiento del Sistema
 
-**`config/db.php`**
+### Autenticación y Sesiones
 
+**Flujo de Login:**
+1. Usuario ingresa email y contraseña
+2. Backend valida credenciales contra `password_hash`
+3. Si son válidas, genera token aleatorio de 64 caracteres hexadecimales
+4. Token se almacena en BD y en localStorage del navegador
+5. Token se incluye en header `Authorization: Bearer {token}` en cada request
+
+**Validación de Token:**
+- Cada request protegido pasa por `AuthMiddleware::authenticate()`
+- Middleware verifica que el token exista en la BD y pertenezca a usuario activo
+- Si token es inválido o expiró, retorna 401 Unauthorized
+
+### Operaciones CRUD Implementadas
+
+| Método | Endpoint | Autenticación | Rol Requerido |
+|--------|----------|-----------------|--------------|
+| GET | `/usuarios` | Sí | Cualquiera |
+| GET | `/usuarios/{id}` | Sí | Cualquiera |
+| POST | `/usuarios` | Sí | Administrador |
+| PATCH | `/usuarios` | Sí | Administrador |
+| DELETE | `/usuarios` | Sí | Administrador |
+
+**Soft Delete Implementado:**
 ```php
-<?php
-require_once __DIR__ . '/logger.php';
-
-class Database {
-    private $host = "localhost";
-    private $db_name = "rest_api_catalina"; 
-    private $username = "root";
-    private $password = "";
-
-    public function getConnection() {
-        try {
-            // Conexión PDO con UTF-8
-            $conn = new PDO(
-                "mysql:host={$this->host};dbname={$this->db_name};charset=utf8mb4",
-                $this->username,
-                $this->password
-            );
-            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            Logger::info("DB conectado a {$this->db_name}");
-            return $conn;
-        } catch (PDOException $e) {
-            Logger::error("Error de conexión: {$e->getMessage()}");
-            http_response_code(500);
-            echo json_encode(["error" => "Error al conectar a BD"]);
-            exit;
-        }
-    }
-}
+// En UsuariosController::delete()
+$stmt = $this->db->prepare("UPDATE usuarios SET is_deleted = true, deleted_at = NOW() WHERE id = :id");
+$stmt->execute([':id' => $id]);
 ```
 
-**Ventajas:**
-- Previene inyección SQL
-- Separa datos del código SQL
-- Mejor rendimiento
+Los usuarios eliminados no se borran físicamente, solo se marcan como `is_deleted = true`. Las consultas siempre filtran estos registros.
+
+### Sistema de Roles
+
+**Administrador** (rol = 'administrador')
+- Acceso completo a CRUD
+- Ver y gestionar todos los usuarios
+- Acceso a estadísticas
+
+**Usuario/Estudiante** (rol = 'usuario')
+- Solo ver lista de usuarios (GET)
+- No puede crear, modificar ni eliminar
+
+**Desarrollador** (rol = 'desarrollador')
+- Ver usuarios
+- Crear nuevos usuarios
+- Sin acceso a eliminar
 
 ---
 
-### 3. Implementación CRUD
+## 🔒 Seguridad y Validación
 
-**`models/Usuarios.php`**
+### Validación Multinivel
 
-```php
-<?php
-require_once __DIR__ . '/../config/db.php';
-
-class Usuarios {
-    private $db;
-
-    public function __construct() {
-        $this->db = (new Database())->getConnection();
-    }
-
-    // GET - Obtener todos
-    public function getAll() {
-        $stmt = $this->db->query("SELECT id, nombre, rol, edad FROM usuarios");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // POST - Crear usuario
-    public function create($data) {
-        try {
-            $stmt = $this->db->prepare(
-                "INSERT INTO usuarios (nombre, rol, edad) VALUES (:nombre, :rol, :edad)"
-            );
-            $stmt->execute([
-                ':nombre' => $data['nombre'] ?? null,
-                ':rol' => $data['rol'] ?? null,
-                ':edad' => $data['edad'] ?? null
-            ]);
-            $id = $this->db->lastInsertId();
-            Logger::info("Usuario creado con ID: $id");
-            return ["success" => true, "id" => $id];
-        } catch (PDOException $e) {
-            Logger::error("Error al crear: {$e->getMessage()}");
-            return ["success" => false, "error" => $e->getMessage()];
-        }
-    }
-
-    // PATCH - Actualizar usuario
-    public function update($data) {
-        if (!isset($data['id'])) {
-            return ["success" => false, "error" => "Falta campo 'id'"];
-        }
-        try {
-            $stmt = $this->db->prepare(
-                "UPDATE usuarios SET nombre=:nombre, rol=:rol, edad=:edad WHERE id=:id"
-            );
-            $stmt->execute([
-                ':nombre' => $data['nombre'] ?? null,
-                ':rol' => $data['rol'] ?? null,
-                ':edad' => $data['edad'] ?? null,
-                ':id' => $data['id']
-            ]);
-            return ["success" => true];
-        } catch (PDOException $e) {
-            Logger::error("Error al actualizar: {$e->getMessage()}");
-            return ["success" => false, "error" => $e->getMessage()];
-        }
-    }
-
-    // DELETE - Eliminar usuario
-    public function delete($id) {
-        try {
-            $stmt = $this->db->prepare("DELETE FROM usuarios WHERE id = :id");
-            $stmt->execute([':id' => $id]);
-            return ["success" => true];
-        } catch (PDOException $e) {
-            Logger::error("Error al eliminar: {$e->getMessage()}");
-            return ["success" => false, "error" => $e->getMessage()];
-        }
-    }
-}
-```
-
-**`controllers/UsuariosController.php`**
-
-```php
-<?php
-require_once __DIR__ . '/../models/Usuarios.php';
-require_once __DIR__ . '/../config/logger.php';
-
-class UsuariosController {
-    private $model;
-
-    public function __construct() {
-        $this->model = new Usuarios();
-    }
-
-    // GET /usuarios
-    public function getAll() {
-        Logger::info('GET /usuarios');
-        echo json_encode($this->model->getAll());
-    }
-
-    // POST /usuarios
-    public function create() {
-        $input = json_decode(file_get_contents("php://input"), true);
-        Logger::info('POST /usuarios: ' . json_encode($input));
-
-        // Validación: solo letras, espacios y acentos
-        $nombre = trim($input['nombre'] ?? '');
-        if (!preg_match('/^[\p{L}\s]+$/u', $nombre)) {
-            http_response_code(400);
-            Logger::warn("Nombre inválido: $nombre");
-            echo json_encode(["error" => "Nombre inválido"]);
-            return;
-        }
-
-        $res = $this->model->create($input);
-        if (!$res['success']) http_response_code(500);
-        echo json_encode($res);
-    }
-
-    // PATCH /usuarios
-    public function update() {
-        $input = json_decode(file_get_contents("php://input"), true);
-        Logger::info('PATCH /usuarios: ' . json_encode($input));
-
-        if (isset($input['nombre'])) {
-            $nombre = trim($input['nombre']);
-            if (!preg_match('/^[\p{L}\s]+$/u', $nombre)) {
-                http_response_code(400);
-                Logger::warn("Nombre inválido: $nombre");
-                echo json_encode(["error" => "Nombre inválido"]);
-                return;
-            }
-        }
-
-        $res = $this->model->update($input);
-        if (!$res['success']) http_response_code(400);
-        echo json_encode($res);
-    }
-
-    // DELETE /usuarios
-    public function delete() {
-        $input = json_decode(file_get_contents("php://input"), true);
-        Logger::info('DELETE /usuarios: ' . json_encode($input));
-
-        if (!isset($input['id'])) {
-            http_response_code(400);
-            echo json_encode(["error" => "Falta campo 'id'"]);
-            return;
-        }
-
-        $res = $this->model->delete($input['id']);
-        if (!$res['success']) http_response_code(400);
-        echo json_encode($res);
-    }
-}
-```
-
----
-
-### 4. Rutas Limpias con `.htaccess`
-
-**`.htaccess` (raíz)**
-
-```apache
-RewriteEngine On
-RewriteRule ^api/(.*)$ api/routes.php [QSA,L]
-```
-
-**`logs/.htaccess`**
-
-```apache
-<IfModule mod_authz_core.c>
-    Require all denied
-</IfModule>
-Options -Indexes
-```
-
-**Resultado:**
-- `/api/usuarios` → `routes.php`
-- Logs protegidos (403 Forbidden)
-
----
-
-### 5. Sistema de Logs
-
-**`config/logger.php`**
-
-```php
-<?php
-class Logger {
-    private static $logFile = null;
-
-    private static function ensureInit() {
-        if (self::$logFile === null) {
-            $projectLogDir = __DIR__ . '/../logs';
-            if (!is_dir($projectLogDir)) @mkdir($projectLogDir, 0755, true);
-            self::$logFile = $projectLogDir . '/server.log';
-        }
-    }
-
-    // Rotación automática de logs
-    private static function rotateIfNeeded() {
-        self::ensureInit();
-        $maxLines = getenv('LOG_MAX_LINES') ?: 5000;
-        
-        if (!file_exists(self::$logFile)) return;
-
-        // Contar líneas
-        $lineCount = 0;
-        $fp = fopen(self::$logFile, 'r');
-        if ($fp) {
-            while (!feof($fp)) {
-                fgets($fp);
-                $lineCount++;
-                if ($lineCount >= $maxLines) break;
-            }
-            fclose($fp);
-        }
-
-        if ($lineCount < $maxLines) return;
-
-        // Comprimir log antiguo
-        $archiveDir = dirname(self::$logFile) . '/archive';
-        if (!is_dir($archiveDir)) @mkdir($archiveDir, 0755, true);
-        
-        $timestamp = date('Ymd_His');
-        $archivePath = "$archiveDir/server.log.$timestamp.gz";
-
-        // Crear archivo .gz
-        $in = fopen(self::$logFile, 'rb');
-        $out = gzopen($archivePath, 'wb9');
-        if ($in && $out) {
-            while (!feof($in)) {
-                gzwrite($out, fread($in, 1024 * 512));
-            }
-            gzclose($out);
-            fclose($in);
-        }
-
-        // Limpiar archivo original
-        file_put_contents(self::$logFile, 
-            "[" . date('Y-m-d H:i:s') . "] [INFO] Rotated log to " . basename($archivePath) . PHP_EOL
-        );
-    }
-
-    private static function write($level, $message) {
-        self::ensureInit();
-        self::rotateIfNeeded();
-        $entry = "[" . date('Y-m-d H:i:s') . "] [$level] $message" . PHP_EOL;
-        file_put_contents(self::$logFile, $entry, FILE_APPEND | LOCK_EX);
-    }
-
-    public static function info($message) { self::write('INFO', $message); }
-    public static function warn($message) { self::write('WARN', $message); }
-    public static function error($message) { self::write('ERROR', $message); }
-}
-
-date_default_timezone_set('America/Mexico_City');
-```
-
-**Características:**
-- Rotación automática al alcanzar 5000 líneas
-- Compresión gzip en `logs/archive/`
-- Thread-safe con `LOCK_EX`
-- Niveles: INFO, WARN, ERROR
-
-**Ejemplo `logs/server.log`:**
-```
-[2025-11-04 15:30:45] [INFO] Request: GET /usuarios
-[2025-11-04 15:31:20] [INFO] Usuario creado con ID: 15
-[2025-11-04 15:32:10] [WARN] Nombre inválido: User123!
-[2025-11-04 15:33:00] [ERROR] Error de conexión: Access denied
-```
-
----
-
-### 6. Endpoint `/stats`
-
-**`controllers/StatsController.php`**
-
-```php
-<?php
-class StatsController {
-    public static function handler() {
-        // Tiempo de ejecución del request
-        $uptime = round(microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'], 2);
-        
-        // Memoria usada (MB)
-        $memory = round(memory_get_usage() / 1024 / 1024, 2);
-        
-        echo json_encode([
-            "uptime_seconds" => $uptime,
-            "memory_MB" => $memory,
-            "fecha" => date("Y-m-d H:i:s")
-        ]);
-    }
-}
-```
-
-**Respuesta:**
-```json
-{
-  "uptime_seconds": 0.15,
-  "memory_MB": 2.37,
-  "fecha": "2025-11-04 15:35:22"
-}
-```
-
----
-
-### 7. Validación y Manejo de Errores
-
-#### Validación de Nombres
-
-```php
-// Acepta letras Unicode (á, é, í, ó, ú, ñ) y espacios
-if (!preg_match('/^[\p{L}\s]+$/u', $nombre)) {
-    http_response_code(400);
-    Logger::warn("Validación fallida: $nombre");
-    echo json_encode(["error" => "Nombre inválido"]);
+**Frontend (JavaScript):**
+```javascript
+// Validación de nombre - solo letras y espacios
+const nameRegex = /^[\p{L}\s]+$/u;
+if (!nameRegex.test(nombre)){
+    errorElement.textContent = 'Nombre inválido: use solo letras y espacios.';
     return;
 }
 ```
 
-**Válidos:** "María José", "François Müller"  
-**Inválidos:** "User123", "admin@user"
-
-#### Manejo de Errores
-
+**Backend (PHP):**
 ```php
-try {
-    $stmt = $this->db->prepare("INSERT INTO usuarios ...");
-    $stmt->execute([...]);
-} catch (PDOException $e) {
-    Logger::error("Error SQL: {$e->getMessage()}");
-    http_response_code(500);
-    echo json_encode(["error" => "Error en el servidor"]);
+// Validación idéntica en servidor
+if (!preg_match('/^[\p{L}\s]+$/u', $nombre)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Nombre solo puede contener letras y espacios']);
+    return;
 }
 ```
 
-**Códigos HTTP:**
-- 200: OK
-- 400: Datos inválidos
-- 404: Ruta no encontrada
-- 500: Error del servidor
+### Protección contra SQL Injection
 
----
-
-### 8. Enrutador Principal
-
-**`routes.php`**
-
+Todos los queries usan **prepared statements** con parámetros vinculados:
 ```php
-<?php
-require_once __DIR__ . '/controllers/UsuariosController.php';
-require_once __DIR__ . '/controllers/StatsController.php';
-require_once __DIR__ . '/config/logger.php';
+// ✅ SEGURO
+$stmt = $this->db->prepare("SELECT * FROM usuarios WHERE email = :email");
+$stmt->execute([':email' => $email]);
 
-// Parsear URI: /api/usuarios → "usuarios"
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$uri = preg_replace('#^.*/api/#', '', $uri);
-$uri = trim($uri, '/');
-$method = $_SERVER['REQUEST_METHOD'];
+// ❌ NUNCA HACER
+$stmt = $this->db->query("SELECT * FROM usuarios WHERE email = '$email'");
+```
 
-$controller = new UsuariosController();
+### Hash de Contraseñas
 
-// Alias: /alumnos → /usuarios
-$aliases = ['alumnos' => 'usuarios'];
-$resource = $aliases[$uri] ?? $uri;
+- **Registro**: Contraseña se hashea con bcrypt
+```php
+$password_hash = password_hash($password, PASSWORD_DEFAULT);
+```
 
-Logger::info("Request: $method /$uri -> $resource");
-
-// Enrutamiento
-switch (true) {
-    case $resource === 'usuarios' && $method === 'GET':
-        $controller->getAll();
-        break;
-
-    case $resource === 'stats' && $method === 'GET':
-        StatsController::handler();
-        break;
-
-    case $resource === 'usuarios' && $method === 'POST':
-        $controller->create();
-        break;
-
-    case $resource === 'usuarios' && $method === 'PATCH':
-        $controller->update();
-        break;
-
-    case $resource === 'usuarios' && $method === 'DELETE':
-        $controller->delete();
-        break;
-
-    default:
-        http_response_code(404);
-        echo json_encode(["error" => "Ruta no encontrada", "ruta" => $uri]);
-        break;
+- **Login**: Verificación segura
+```php
+if (password_verify($password, $user['password_hash'])) {
+    // Credenciales válidas
 }
 ```
 
 ---
 
-## Conclusiones
+## 📊 Logs y Auditoría
 
-### Aprendizajes
+El sistema registra automáticamente toda actividad en `logs/server.log`:
 
-- **Seguridad:** Prepared statements previenen inyección SQL
-- **Modularidad:** Arquitectura MVC separa responsabilidades
-- **Monitoreo:** Sistema de logs permite auditar y debuggear
-- **Validación:** Regex Unicode-safe maneja nombres con acentos
-- **Rotación:** Compresión automática previene crecimiento de logs
+```
+[2024-01-15 10:30:45] [INFO] DB conectado a rest_api_catalina en localhost
+[2024-01-15 10:31:20] [INFO] Login exitoso: catalina@email.com
+[2024-01-15 10:32:15] [WARN] Intento de acceso sin token de autenticación
+[2024-01-15 10:33:00] [ERROR] Error al crear usuario - SQL Error: UNIQUE constraint failed
+```
 
-### Desafíos Superados
-
-- Configurar `mod_rewrite` correctamente
-- Implementar validación Unicode (acentos)
-- Rotación de logs sin bloqueos
-- Manejo de errores PDO
+**Eventos Registrados:**
+- Conexiones/desconexiones a BD
+- Intentos de login (exitosos y fallidos)
+- Accesos autorizados y denegados
+- Operaciones CRUD
+- Errores del sistema
 
 ---
 
-## Evidencias
+## 🛡️ Endpoints de la API
 
-### Pruebas con cURL
+### Públicos (sin autenticación)
 
-```bash
-# GET - Listar usuarios
-curl http://localhost/api/usuarios
-
-# POST - Crear usuario
-curl -X POST http://localhost/api/usuarios \
-  -H "Content-Type: application/json" \
-  -d '{"nombre":"Ana García","rol":"admin","edad":30}'
-
-# PATCH - Actualizar usuario
-curl -X PATCH http://localhost/api/usuarios \
-  -H "Content-Type: application/json" \
-  -d '{"id":1,"edad":31}'
-
-# DELETE - Eliminar usuario
-curl -X DELETE http://localhost/api/usuarios \
-  -H "Content-Type: application/json" \
-  -d '{"id":1}'
-
-# GET - Estadísticas
-curl http://localhost/api/stats
 ```
+POST /auth/register
+Cuerpo: { nombre, email, password, edad, rol }
+
+POST /auth/login
+Cuerpo: { email, password }
+Respuesta: { token, user: {id, nombre, email, rol} }
+
+GET /auth/verify
+Descripción: Verifica si el token actual es válido
+
+GET /stats
+Descripción: Estadísticas generales del sistema
+```
+
+### Protegidos (requieren token)
+
+```
+GET /usuarios
+Descripción: Lista todos los usuarios (sin soft deleted)
+Respuesta: [{ id, nombre, email, rol, edad, created_at }, ...]
+
+GET /usuarios/{id}
+Descripción: Obtiene usuario específico
+
+POST /usuarios
+Requiere: rol = administrador
+Cuerpo: { nombre, edad, rol }
+
+PATCH /usuarios
+Requiere: rol = administrador
+Cuerpo: { id, nombre?, edad?, rol? }
+
+DELETE /usuarios
+Requiere: rol = administrador
+Cuerpo: { id }
+Efecto: Soft delete (marca como eliminado)
+
+POST /auth/logout
+Descripción: Invalida el token actual
+```
+
+---
+
+## 🖼️ Capturas del Funcionamiento
+
+### 1. Base de Datos - Estructura
+
+![Estructura de la tabla usuarios](./screenshots/01-basedatos-estructura.png)
+
+**Descripción**: Estructura de la tabla en phpMyAdmin con todos los campos necesarios para el sistema.
+
+---
+
+### 2. Base de Datos - Registros y Soft Delete
+
+![Registros con soft delete](./screenshots/02-basedatos-registros.png)
+
+**Descripción**: Usuarios registrados mostrando:
+- Múltiples usuarios con diferentes roles
+- Demostración de soft delete: `is_deleted = 1` con `deleted_at` como timestamp
+- Los datos se marcan como eliminados pero nunca se borran físicamente
+
+---
+
+### 3. Login - Formulario de Autenticación
+
+![Login](./screenshots/03-login-formulario.png)
+
+**Descripción**: Página de autenticación con:
+- Logo "⚡ CATALINA API"
+- Campos de Email y Contraseña
+- Validación en tiempo real
+- Opción para registrarse
+
+---
+
+### 4. Panel de Administración - Vista Completa
+
+![Admin Panel](./screenshots/04-admin-panel-completo.png)
+
+**Descripción**: Index.html como administrador mostrando:
+- Header con badge rojo "👑 Administrador"
+- Acceso completo a todos los formularios CRUD
+- Panel de control con opciones de gestión
+
+---
+
+### 5. CRUD - Crear Usuario
+
+![Crear usuario](./screenshots/05-admin-crear-usuario.png)
+
+**Descripción**: Formulario de creación:
+- Campos: Nombre, Edad, Rol
+- Validación de datos en frontend
+- Botón "🚀 Crear Usuario" para enviar al backend
+
+---
+
+### 6. Soft Delete - Eliminación en Base de Datos
+
+![Soft delete](./screenshots/06-admin-eliminar-usuario.png)
+
+**Descripción**: Resultado de operación DELETE:
+- Usuario marcado como `is_deleted = 1`
+- Campo `deleted_at` con timestamp actual
+- Comprueba que NO se elimina físicamente
+
+---
+
+### 7. Control de Acceso por Roles - Usuario Bloqueado
+
+![Usuario sin permisos](./screenshots/07-usuario-bloqueado.png)
+
+**Descripción**: Index.html como usuario normal mostrando:
+- Badge verde "👤 Usuario"
+- Secciones bloqueadas con icono 🔒
+- Mensaje: "Se requieren privilegios de administrador"
+- Demostración de autorización por roles
+
+---
+
+### 8. API - Respuesta GET /usuarios
+
+![GET Usuarios](./screenshots/08-get-usuarios-respuesta.png)
+
+**Descripción**: Respuesta JSON exitosa:
+```json
+{
+  "success": true,
+  "data": [...usuarios...],
+  "count": 2,
+  "user_role": "administrador"
+}
+```
+
+---
+
+### 9. API - Respuesta POST /usuarios
+
+![POST Usuario](./screenshots/09-post-usuarios-respuesta.png)
+
+**Descripción**: Respuesta de creación exitosa:
+```json
+{
+  "success": true,
+  "message": "Usuario creado exitosamente",
+  "id": 5,
+  "created_by": "admin@email.com"
+}
+```
+
+---
+
+### 10. Logs de Actividad del Sistema
+
+![Logs](./screenshots/10-logs-servidor.png)
+
+**Descripción**: Archivo `logs/server.log` mostrando auditoría completa:
+- Conexiones a BD
+- Intentos de login
+- Operaciones CRUD
+- Accesos denegados
+- Errores del sistema
+- Cada evento con fecha, hora y tipo [INFO], [WARN], [ERROR]
+
+---
+
+## 🔑 Autenticación Técnica Explicada
+
+### Generación de Token
+```php
+// En AuthController::login()
+$token = bin2hex(random_bytes(32)); // 64 caracteres seguros
+$this->model->updateSessionToken($user['id'], $token);
+```
+
+- `random_bytes(32)` genera 32 bytes criptográficamente seguros
+- `bin2hex()` convierte a 64 caracteres hexadecimales legibles
+- Se almacena en la BD y en localStorage del cliente
+
+### Validación de Token en cada Request
+```php
+// En AuthMiddleware::authenticate()
+$token = self::extractToken($authHeader); // Extrae de "Bearer {token}"
+$user = $userModel->getUserBySessionToken($token); // Valida en BD
+
+if (!$user) {
+    self::sendUnauthorized("Token inválido o sesión expirada");
+}
+```
+
+### Cierre de Sesión
+```php
+// En AuthController::logout()
+$this->model->invalidateSessionToken($token);
+// UPDATE usuarios SET session_token = NULL WHERE session_token = :token
+```
+
+El token se marca como NULL en BD, invalidando la sesión.
+
+
+---
+
+## 📁 Estructura de Archivos Clave
+
+### `api/routes.php`
+Router principal que mapea URLs a controladores:
+```php
+case $resource === 'usuarios' && $method === 'GET' && !$userId:
+    AuthMiddleware::authenticate();
+    $controller = new UsuariosController();
+    $controller->getAll();
+    break;
+```
+
+### `api/middleware/AuthMiddleware.php`
+Valida autenticación y autorización:
+```php
+public static function requireAdmin() {
+    $user = self::authenticate();
+    if ($user['rol'] !== 'administrador') {
+        http_response_code(403);
+        echo json_encode(['error' => 'Acceso denegado']);
+        exit;
+    }
+    return $user;
+}
+```
+
+### `api/models/Usuarios.php`
+Métodos CRUD y de autenticación:
+```php
+public function validateCredentials($email, $password) {
+    $stmt = $this->db->prepare("SELECT * FROM usuarios WHERE email = :email");
+    $stmt->execute([':email' => $email]);
+    $user = $stmt->fetch();
+    
+    if ($user && password_verify($password, $user['password_hash'])) {
+        return $user;
+    }
+    return false;
+}
+```
+
+---
+
+## 🧪 Pruebas Básicas
+
+### 1. Registrar Usuario
+```
+POST http://localhost:81/restapicata/api/auth/register
+Content-Type: application/json
+
+{
+  "nombre": "Ana García",
+  "email": "ana@email.com",
+  "password": "123456",
+  "edad": 25,
+  "rol": "usuario"
+}
+```
+
+### 2. Login
+```
+POST http://localhost:81/restapicata/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@email.com",
+  "password": "123456"
+}
+
+Respuesta: { token: "abc123...", user: {...} }
+```
+
+### 3. Ver Usuarios (con token)
+```
+GET http://localhost:81/restapicata/api/usuarios
+Authorization: Bearer abc123...
+```
+
+### 4. Crear Usuario (solo admin)
+```
+POST http://localhost:81/restapicata/api/usuarios
+Authorization: Bearer admin_token...
+Content-Type: application/json
+
+{
+  "nombre": "Luis López",
+  "edad": 30,
+  "rol": "desarrollador"
+}
+```
+
+### 5. Eliminar Usuario (soft delete)
+```
+DELETE http://localhost:81/restapicata/api/usuarios
+Authorization: Bearer admin_token...
+Content-Type: application/json
+
+{ "id": 2 }
+```
+
+---
+
+## 🚀 Características Implementadas
+
+✅ **API REST modular** con separación de responsabilidades  
+✅ **CRUD completo** con soft delete  
+✅ **Autenticación con tokens** de sesión  
+✅ **Autorización por roles** (Admin, Usuario, Desarrollador)  
+✅ **Validación multinivel** (frontend + backend)  
+✅ **Protección contra SQL Injection** (prepared statements)  
+✅ **Hash seguro de contraseñas** (bcrypt)  
+✅ **Logging centralizado** de eventos y errores  
+✅ **CORS configurado** para desarrollo  
+✅ **Interfaz adaptativa** según permisos del usuario  
+
+---
+
+## 🔗 Repositorio
+
+**GitHub**: [Enlaza tu repositorio GitHub aquí]
