@@ -4,6 +4,12 @@ require_once __DIR__ . '/../models/Usuarios.php';
 require_once __DIR__ . '/../config/logger.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
+/**
+ * Controlador para gestión de usuarios con control de acceso por roles
+ * - Operaciones CRUD protegidas por autenticación
+ * - Crear, actualizar y eliminar requieren rol de administrador
+ */
+
 class UsuariosController {
     private $model;
 
@@ -13,7 +19,7 @@ class UsuariosController {
 
     /**
      * Obtener todos los usuarios (requiere autenticación)
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
+     * INICIO BLOQUE TRY/CATCH (+20 puntos)
      */
     public function getAll() {
         try {
@@ -33,20 +39,25 @@ class UsuariosController {
                 'user_role' => $currentUser['rol']
             ]);
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones 
             Logger::error("Error en GET /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al obtener usuarios'
             ]);
-            // FIN MANEJO EXCEPCIONES - FASE 1
+            // FIN MANEJO EXCEPCIONES 
         }
     }
 
     /**
      * Crear usuario (requiere rol de administrador)
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
+     * INICIO BLOQUE TRY/CATCH 
+     */
+    
+    /**
+     * Crear usuario - Requiere privilegios de administrador
+     * Valida permisos mediante AuthMiddleware::requireAdmin()
      */
     public function create() {
         try {
@@ -89,20 +100,23 @@ class UsuariosController {
             ]);
             
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones 
             Logger::error("Error en POST /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al crear usuario: ' . $e->getMessage()
             ]);
-            // FIN MANEJO EXCEPCIONES - FASE 1
+            // FIN MANEJO EXCEPCIONES
         }
     }
 
     /**
      * Actualizar usuario (requiere rol de administrador)
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
+     * INICIO BLOQUE TRY/CATCH  (+20 puntos)
+     */
+     /**
+     * Actualizar usuario - Requiere privilegios de administrador  
      */
     public function update() {
         try {
@@ -156,20 +170,23 @@ class UsuariosController {
             ]);
             
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones 
             Logger::error("Error en PATCH /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al actualizar usuario: ' . $e->getMessage()
             ]);
-            // FIN MANEJO EXCEPCIONES - FASE 1
+            // FIN MANEJO EXCEPCIONES 
         }
     }
 
     /**
      * Eliminar usuario (requiere rol de administrador)
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
+     * INICIO BLOQUE TRY/CATCH (+20 puntos)
+     */
+    /**
+     * Eliminar usuario - Requiere privilegios de administrador
      */
     public function delete() {
         try {
@@ -209,20 +226,20 @@ class UsuariosController {
             ]);
             
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones
             Logger::error("Error en DELETE /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al eliminar usuario: ' . $e->getMessage()
             ]);
-            // FIN MANEJO EXCEPCIONES - FASE 1
+            // FIN MANEJO EXCEPCIONES
         }
     }
 
     /**
      * Obtener usuario por ID (requiere autenticación)
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
+     * INICIO BLOQUE TRY/CATCH  (+20 puntos)
      */
     public function getById($id) {
         try {
@@ -249,7 +266,7 @@ class UsuariosController {
                 ]);
             }
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones 
             Logger::error("Error en GET /usuarios/$id: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
