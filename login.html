@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Catalina API</title>
+  <title>Login - API REST</title>
+
+  <link rel="shortcut icon" href="favicon/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="favicon/favicon.ico" type="image/x-icon">
+
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -37,7 +41,7 @@
     <div class="neo-card p-8 w-full max-w-md">
       <div class="text-center mb-8">
         <div class="inline-block p-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
-          <h1 class="text-3xl font-black text-white glow-text">⚡ CATALINA API</h1>
+          <h1 class="text-3xl font-black text-white glow-text">⚡ API REST</h1>
         </div>
         <p class="text-slate-400">Inicia sesión en tu cuenta</p>
       </div>
@@ -150,51 +154,62 @@
 
     // Función de login
     async function login() {
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
-      const errorElement = document.getElementById('loginError');
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const errorElement = document.getElementById('loginError');
 
-      // Limpiar error anterior
-      errorElement.textContent = '';
+        // Limpiar error anterior
+        errorElement.textContent = '';
 
-      try {
-        console.log('Intentando login...');
-        
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, password })
-        });
-
-        console.log('Status:', response.status);
-        
-        // Obtener el texto de la respuesta para debug
-        const responseText = await response.text();
-        console.log('Respuesta completa:', responseText);
-
-        // Intentar parsear como JSON
-        let data;
         try {
-          data = JSON.parse(responseText);
-        } catch (e) {
-          console.error('No se pudo parsear JSON:', e);
-          throw new Error(`La API devolvió HTML en lugar de JSON. Revisa tu backend.`);
-        }
+            console.log('Intentando login...');
+            
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
 
-        if (data.success) {
-          // Guardar token y redirigir al index
-          localStorage.setItem('authToken', data.token);
-          localStorage.setItem('currentUser', JSON.stringify(data.user));
-          window.location.href = 'index.html';
-        } else {
-          errorElement.textContent = data.error || 'Error en el login';
+            console.log('Status:', response.status);
+            
+            // Verificar si la respuesta es JSON válido
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // Si no es JSON, obtener texto y mostrar error genérico
+                const text = await response.text();
+                console.error('Respuesta no JSON:', text);
+                
+                if (response.status === 429) {
+                    errorElement.textContent = 'Demasiados intentos. Por favor espera.';
+                } else {
+                    errorElement.textContent = 'Error en el servidor. Intenta nuevamente.';
+                }
+                return;
+            }
+
+            // Si es JSON, procesar normalmente
+            const data = await response.json();
+
+            if (data.success) {
+                // Guardar token y redirigir al index
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('currentUser', JSON.stringify(data.user));
+                window.location.href = 'index.html';
+            } else {
+                // ✅ MOSTRAR SOLO EL ERROR, NO INTENTOS RESTANTES
+                errorElement.textContent = data.error || 'Error en el login';
+                
+                // Verificar si está bloqueado
+                if (data.blocked) {
+                    checkBlockStatus(); // Actualizar estado de bloqueo
+                }
+            }
+        } catch (error) {
+            console.error('Error de login completo:', error);
+            errorElement.textContent = 'Error de conexión. Verifica tu internet.';
         }
-      } catch (error) {
-        console.error('Error de login completo:', error);
-        errorElement.textContent = `Error: ${error.message}`;
-      }
     }
 
     // Función de registro
@@ -243,6 +258,58 @@
         errorElement.className = 'mt-4 text-red-400 text-sm text-center';
       }
     }
+
+    // Función para verificar y actualizar estado de bloqueo
+    async function checkBlockStatus() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/block-status`);
+            const data = await response.json();
+            
+            if (data.success && data.block_status.blocked) {
+                // BLOQUEAR FORMULARIO
+                const loginButton = document.querySelector('#loginForm button[type="submit"]');
+                const remainingTime = data.block_status.remaining_time;
+                
+                loginButton.disabled = true;
+                loginButton.innerHTML = `<span>⏳</span> Bloqueado (${remainingTime}s)`;
+                loginButton.style.opacity = '0.6';
+                loginButton.style.cursor = 'not-allowed';
+                
+                // Mostrar mensaje de bloqueo
+                document.getElementById('loginError').textContent = 
+                    `Demasiados intentos fallidos. Espera ${remainingTime} segundos.`;
+                document.getElementById('loginError').className = 'mt-4 text-red-400 text-sm text-center';
+                
+                // Actualizar cada segundo hasta que se desbloquee
+                if (remainingTime > 0) {
+                    setTimeout(checkBlockStatus, 1000);
+                }
+            } else {
+                // DESBLOQUEAR FORMULARIO
+                const loginButton = document.querySelector('#loginForm button[type="submit"]');
+                loginButton.disabled = false;
+                loginButton.innerHTML = `<span>🔑</span> Iniciar Sesión`;
+                loginButton.style.opacity = '1';
+                loginButton.style.cursor = 'pointer';
+                
+                // ✅ QUITAMOS EL MENSAJE DE INTENTOS RESTANTES
+                // Solo limpiamos el mensaje de error si no está bloqueado
+                if (!data.block_status.blocked) {
+                    document.getElementById('loginError').textContent = '';
+                }
+            }
+        } catch (error) {
+            console.error('Error verificando bloqueo:', error);
+        }
+    }
+
+    // Verificar bloqueo al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        checkBlockStatus();
+        
+        // Verificar cada 5 segundos
+        setInterval(checkBlockStatus, 5000);
+    });
 
     // Funciones para mostrar/ocultar secciones - CORREGIDAS
     function showLogin() {

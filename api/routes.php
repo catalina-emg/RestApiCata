@@ -11,6 +11,7 @@ require_once __DIR__ . '/config/logger.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/middleware/AuthMiddleware.php';
+require_once __DIR__ . '/middleware/RateLimitMiddleware.php'; // ← NUEVO
 require_once __DIR__ . '/controllers/UsuariosController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/StatsController.php';
@@ -40,81 +41,93 @@ Logger::info("Request: $method /$uri -> resolved to resource '$resource'");
 try {
     switch (true) {
         // ==================== RUTAS PÚBLICAS ====================
+        case $resource === 'auth/block-status' && $method === 'GET':
+            require_once __DIR__ . '/middleware/LoginAttemptMiddleware.php';
+            $status = LoginAttemptMiddleware::getBlockStatus();
+            echo json_encode([
+                'success' => true,
+                'block_status' => $status
+            ]);
+            break;
         case $resource === 'auth/register' && $method === 'POST':
+            RateLimitMiddleware::apply('auth'); // ← RATE LIMIT
             $authController = new AuthController();
             $authController->register();
             break;
 
         case $resource === 'auth/login' && $method === 'POST':
+            RateLimitMiddleware::apply('auth'); // ← RATE LIMIT
             $authController = new AuthController();
             $authController->login();
             break;
 
         case $resource === 'auth/verify' && $method === 'GET':
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             $authController = new AuthController();
             $authController->verify();
             break;
 
         case $resource === 'stats' && $method === 'GET':
+            RateLimitMiddleware::apply('stats'); // ← RATE LIMIT
             StatsController::handler();
             break;
 
         // ==================== RUTAS DE PERFIL ====================
         case $resource === 'profile' && $method === 'GET':
-            // GET /profile - Obtener perfil del usuario autenticado
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             $profileController = new ProfileController();
             $profileController->getProfile();
             break;
 
         case $resource === 'profile' && $method === 'PATCH':
-            // PATCH /profile - Actualizar perfil
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             $profileController = new ProfileController();
             $profileController->updateProfile();
             break;
 
         case $resource === 'profile/change-password' && $method === 'POST':
-            // POST /profile/change-password - Cambiar contraseña
+            RateLimitMiddleware::apply('auth'); // ← RATE LIMIT
             $profileController = new ProfileController();
             $profileController->changePassword();
             break;
 
         case $resource === 'profile/stats' && $method === 'GET':
-            // GET /profile/stats - Estadísticas del usuario
+            RateLimitMiddleware::apply('stats'); // ← RATE LIMIT
             $profileController = new ProfileController();
             $profileController->getUserStats();
             break;
 
         // ==================== RUTAS DE USUARIOS (PROTEGIDAS) ====================
         case $resource === 'usuarios' && $method === 'GET' && !$userId:
-            // GET /usuarios - Listar todos
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::authenticate();
             $controller = new UsuariosController();
             $controller->getAll();
             break;
 
         case $isUserById && $method === 'GET':
-            // GET /usuarios/{id} - Obtener usuario específico
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::authenticate();
             $controller = new UsuariosController();
             $controller->getById($userId);
             break;
 
         case $resource === 'usuarios' && $method === 'POST':
-            // POST /usuarios - Crear usuario
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::authenticate();
             $controller = new UsuariosController();
             $controller->create();
             break;
 
         case $resource === 'usuarios' && $method === 'PATCH':
-            // PATCH /usuarios - Actualizar usuario
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::authenticate();
             $controller = new UsuariosController();
             $controller->update();
             break;
 
         case $resource === 'usuarios' && $method === 'DELETE':
-            // DELETE /usuarios - Eliminar usuario (solo admin)
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::requireAdmin();
             $controller = new UsuariosController();
             $controller->delete();
@@ -122,20 +135,20 @@ try {
 
         // ==================== RUTAS DE AUTENTICACIÓN ====================
         case $resource === 'auth/profile' && $method === 'GET':
-            // GET /auth/profile - Perfil del usuario autenticado (alternativa)
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             $authController = new AuthController();
             $authController->profile();
             break;
 
         case $resource === 'auth/logout' && $method === 'POST':
-            // POST /auth/logout - Cerrar sesión
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             $authController = new AuthController();
             $authController->logout();
             break;
 
         // ==================== RUTAS DE LOGS ====================
         case $resource === 'logevent' && $method === 'POST':
-            // POST /logevent - Registrar evento
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::authenticate();
             $input = json_decode(file_get_contents('php://input'), true);
             $nombre = isset($input['nombre']) ? trim($input['nombre']) : '';
@@ -157,7 +170,7 @@ try {
 
         // ==================== RUTAS DE CONFIGURACIÓN ====================
         case $resource === 'config/auth' && $method === 'GET':
-            // GET /config/auth - Obtener configuración de autenticación (solo admin)
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::requireAdmin();
             echo json_encode([
                 'success' => true,
@@ -166,7 +179,7 @@ try {
             break;
 
         case $resource === 'config/cors' && $method === 'GET':
-            // GET /config/cors - Obtener configuración CORS (solo admin)
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             AuthMiddleware::requireAdmin();
             echo json_encode([
                 'success' => true,
@@ -175,6 +188,7 @@ try {
             break;
 
         default:
+            RateLimitMiddleware::apply('api'); // ← RATE LIMIT
             http_response_code(404);
             echo json_encode([
                 "success" => false,

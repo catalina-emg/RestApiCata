@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../models/Usuarios.php';
 require_once __DIR__ . '/../config/logger.php';
+require_once __DIR__ . '/../middleware/LoginAttemptMiddleware.php';
 
 class AuthController {
     private $model;
@@ -105,69 +106,74 @@ class AuthController {
      * Login de usuario
     
      */
-    public function login() {
-        try {
-            $input = json_decode(file_get_contents("php://input"), true);
-            
-            // CORRECCIÓN: Log solo evento, no datos sensibles (FASE 2)
-            Logger::info('Intento de login - Email: ' . ($input['email'] ?? 'no proporcionado'));
-            // FIN CORRECCIÓN FASE 2
+    // En tu AuthController.php - método login()
+public function login() {
+    try {
+        // VERIFICAR BLOQUEO ANTES DE PROCESAR LOGIN
+        LoginAttemptMiddleware::checkLoginAttempts();
+        
+        $input = json_decode(file_get_contents("php://input"), true);
+        Logger::info('Intento de login - Email: ' . ($input['email'] ?? 'no proporcionado'));
 
-            // Validar campos
-            if (!isset($input['email']) || !isset($input['password'])) {
-                http_response_code(400);
-                Logger::warn("Login fallido - Campos faltantes");
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Email y password son requeridos'
-                ]);
-                return;
-            }
-
-            $email = trim($input['email']);
-            $password = $input['password'];
-
-            // Validar credenciales
-            $user = $this->model->validateCredentials($email, $password);
-
-            if ($user) {
-                // Generar token de sesión
-                $token = bin2hex(random_bytes(32));
-                $this->model->updateSessionToken($user['id'], $token);
-
-                Logger::info("Login exitoso: $email");
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login exitoso',
-                    'token' => $token,
-                    'user' => [
-                        'id' => $user['id'],
-                        'nombre' => $user['nombre'],
-                        'email' => $user['email'],
-                        'rol' => $user['rol'],
-                        'edad' => $user['edad']
-                    ]
-                ]);
-            } else {
-                http_response_code(401);
-                Logger::warn("Login fallido - Credenciales inválidas: $email");
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Credenciales inválidas'
-                ]);
-            }
-
-        } catch (Exception $e) {
-            // INICIO: Manejo de excepciones 
-            http_response_code(500);
-            Logger::error("Excepción en login: " . $e->getMessage());
+        // Validar campos
+        if (!isset($input['email']) || !isset($input['password'])) {
+            http_response_code(400);
+            Logger::warn("Login fallido - Campos faltantes");
             echo json_encode([
                 'success' => false,
-                'error' => 'Error interno del servidor en login'
+                'error' => 'Email y password son requeridos'
             ]);
-            // FIN MANEJO EXCEPCIONES 
+            return;
         }
+
+        $email = trim($input['email']);
+        $password = $input['password'];
+
+        // Validar credenciales
+        $user = $this->model->validateCredentials($email, $password);
+
+        if ($user) {
+            // ✅ LOGIN EXITOSO - Reiniciar intentos
+            LoginAttemptMiddleware::resetOnSuccess();
+            
+            // Generar token de sesión
+            $token = bin2hex(random_bytes(32));
+            $this->model->updateSessionToken($user['id'], $token);
+
+            Logger::info("Login exitoso: $email");
+            echo json_encode([
+                'success' => true,
+                'message' => 'Login exitoso',
+                'token' => $token,
+                'user' => [
+                    'id' => $user['id'],
+                    'nombre' => $user['nombre'],
+                    'email' => $user['email'],
+                    'rol' => $user['rol'],
+                    'edad' => $user['edad']
+                ]
+            ]);
+        } else {
+            // ❌ LOGIN FALLIDO - Registrar intento fallido
+            LoginAttemptMiddleware::recordFailedAttempt();
+            
+            http_response_code(401);
+            Logger::warn("Login fallido - Credenciales inválidas: $email");
+            echo json_encode([
+                'success' => false,
+                'error' => 'Credenciales inválidas'
+            ]);
+        }
+
+    } catch (Exception $e) {
+        Logger::error("Excepción en login: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Error interno del servidor en login'
+        ]);
     }
+}
 
     /**
      * Logout de usuario  
