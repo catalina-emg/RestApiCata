@@ -3,15 +3,23 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/logger.php';
 
+/**
+ * Modelo para gestión de usuarios con sistema de soft delete
+ * - Eliminación lógica manteniendo datos en base de datos
+ * - Filtrado automático de registros eliminados
+ * - Operaciones CRUD seguras con autenticación
+ */
+
 class Usuarios {
     private $db;
     
     public function __construct() {
         $this->db = (new Database())->getConnection();
     }
-
-    // ==================== MÉTODOS EXISTENTES (CRUD) ====================
-    
+    /**
+     * Obtener todos los usuarios activos (excluye eliminados)
+     * Filtra por is_deleted = false para soft delete
+     */
     public function getAll() {
         $stmt = $this->db->query("SELECT id, nombre, email, rol, edad, is_active, created_at FROM usuarios WHERE is_deleted = false");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -66,24 +74,26 @@ class Usuarios {
             return ["success" => false, "error" => $e->getMessage()];
         }
     }
-
+          /**
+     * Eliminación lógica (soft delete) - No borra físicamente
+     * Marca el registro como eliminado con timestamp
+     */
     public function delete($id) {
-        if (empty($id)) {
-            return ["success" => false, "error" => "Falta el 'id' para eliminar"];
-        }
-        try {
-            // SOFT DELETE - Marcar como eliminado en lugar de borrar físicamente
-            $stmt = $this->db->prepare("UPDATE usuarios SET is_deleted = true, deleted_at = NOW() WHERE id = :id");
-            $stmt->execute([':id' => $id]);
-            Logger::info("Usuario marcado como eliminado (soft delete): " . $id);
-            return ["success" => true];
-        } catch (PDOException $e) {
-            Logger::error('Error en Usuarios::delete - ' . $e->getMessage());
-            return ["success" => false, "error" => $e->getMessage()];
-        }
+    if (empty($id)) {
+        return ["success" => false, "error" => "Falta el 'id' para eliminar"];
     }
+    try {
+         // SOFT DELETE - Marcar como eliminado en lugar de borrar físicamente
+        $stmt = $this->db->prepare("UPDATE usuarios SET is_deleted = true, deleted_at = NOW() WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        Logger::info("Usuario marcado como eliminado (soft delete): " . $id);
+        return ["success" => true];
+    } catch (PDOException $e) {
+        Logger::error('Error en Usuarios::delete - ' . $e->getMessage());
+        return ["success" => false, "error" => $e->getMessage()];
+    }
+}
 
-    // ==================== NUEVOS MÉTODOS DE AUTENTICACIÓN ====================
 
     /**
      * Crear usuario con autenticación (email y password)
