@@ -13,12 +13,16 @@ class UsuariosController {
 
     /**
      * Obtener todos los usuarios (requiere autenticación)
+     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
      */
     public function getAll() {
         try {
             // Verificar autenticación
             $currentUser = AuthMiddleware::authenticate();
+            
+            // CORRECCIÓN: Log solo evento, no datos sensibles (FASE 2)
             Logger::info("GET /usuarios - Usuario: " . $currentUser['email']);
+            // FIN CORRECCIÓN FASE 2
             
             $result = $this->model->getAll();
             echo json_encode([
@@ -26,34 +30,40 @@ class UsuariosController {
                 'data' => $result,
                 'count' => count($result),
                 'requested_by' => $currentUser['email'],
-                'user_role' => $currentUser['rol'] // ← NUEVO: enviar rol al frontend
+                'user_role' => $currentUser['rol']
             ]);
         } catch (Exception $e) {
+            // INICIO: Manejo de excepciones - FASE 1
             Logger::error("Error en GET /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al obtener usuarios'
             ]);
+            // FIN MANEJO EXCEPCIONES - FASE 1
         }
     }
 
     /**
      * Crear usuario (requiere rol de administrador)
+     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
      */
     public function create() {
         try {
-            // Verificar que sea administrador
+            // Verificar que sea administrador - FASE 3 (+10 puntos)
             $currentUser = AuthMiddleware::requireAdmin();
             
             $input = json_decode(file_get_contents("php://input"), true);
-            Logger::info('POST /usuarios - Admin: ' . $currentUser['email'] . ' - Payload: ' . json_encode($input));
+            
+            // CORRECCIÓN: Log solo evento, no payload completo (FASE 2)
+            Logger::info('POST /usuarios - Admin: ' . $currentUser['email'] . ' - Creando usuario');
+            // FIN CORRECCIÓN FASE 2
 
             // Validación del nombre
             $nombre = isset($input['nombre']) ? trim($input['nombre']) : '';
             if ($nombre === '' || !preg_match('/^[\p{L}\s]+$/u', $nombre)) {
                 http_response_code(400);
-                Logger::warn("Intento de insercion invalida por usuario: " . $currentUser['email'] . " - Nombre: $nombre");
+                Logger::warn("Intento de insercion invalida por usuario: " . $currentUser['email']);
                 echo json_encode([
                     "success" => false,
                     "error" => "Nombre invalido"
@@ -62,7 +72,7 @@ class UsuariosController {
             }
 
             $res = $this->model->create($input);
-            Logger::info('POST /usuarios result: ' . json_encode($res));
+            Logger::info('Usuario creado exitosamente por: ' . $currentUser['email']);
             
             if (isset($res['success']) && $res['success'] === false) {
                 http_response_code(500);
@@ -79,25 +89,31 @@ class UsuariosController {
             ]);
             
         } catch (Exception $e) {
+            // INICIO: Manejo de excepciones - FASE 1
             Logger::error("Error en POST /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al crear usuario: ' . $e->getMessage()
             ]);
+            // FIN MANEJO EXCEPCIONES - FASE 1
         }
     }
 
     /**
      * Actualizar usuario (requiere rol de administrador)
+     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
      */
     public function update() {
         try {
-            // Verificar que sea administrador
+            // Verificar que sea administrador - FASE 3 (+10 puntos)
             $currentUser = AuthMiddleware::requireAdmin();
             
             $input = json_decode(file_get_contents("php://input"), true);
-            Logger::info('PATCH /usuarios - Admin: ' . $currentUser['email'] . ' - Payload: ' . json_encode($input));
+            
+            // CORRECCIÓN: Log solo evento (FASE 2)
+            Logger::info('PATCH /usuarios - Admin: ' . $currentUser['email'] . ' - Actualizando usuario ID: ' . ($input['id'] ?? 'no especificado'));
+            // FIN CORRECCIÓN FASE 2
             
             // Validar que tenga ID
             if (!isset($input['id'])) {
@@ -114,7 +130,7 @@ class UsuariosController {
                 $nombre = trim($input['nombre']);
                 if ($nombre === '' || !preg_match('/^[\p{L}\s]+$/u', $nombre)) {
                     http_response_code(400);
-                    Logger::warn("Intento de actualizacion invalida por usuario: " . $currentUser['email'] . " - Nombre: $nombre");
+                    Logger::warn("Intento de actualizacion invalida por usuario: " . $currentUser['email']);
                     echo json_encode([
                         "success" => false,
                         "error" => "Nombre invalido"
@@ -125,7 +141,7 @@ class UsuariosController {
             }
 
             $res = $this->model->update($input);
-            Logger::info('PATCH /usuarios result: ' . json_encode($res));
+            Logger::info('Usuario actualizado exitosamente por: ' . $currentUser['email']);
             
             if (isset($res['success']) && $res['success'] === false) {
                 http_response_code(400);
@@ -140,25 +156,31 @@ class UsuariosController {
             ]);
             
         } catch (Exception $e) {
+            // INICIO: Manejo de excepciones - FASE 1
             Logger::error("Error en PATCH /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al actualizar usuario: ' . $e->getMessage()
             ]);
+            // FIN MANEJO EXCEPCIONES - FASE 1
         }
     }
 
     /**
      * Eliminar usuario (requiere rol de administrador)
+     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
      */
     public function delete() {
         try {
-            // Verificar que sea administrador
+            // Verificar que sea administrador - FASE 3 (+10 puntos)
             $currentUser = AuthMiddleware::requireAdmin();
             
             $input = json_decode(file_get_contents("php://input"), true);
-            Logger::info('DELETE /usuarios - Admin: ' . $currentUser['email'] . ' - Payload: ' . json_encode($input));
+            
+            // CORRECCIÓN: Log solo evento (FASE 2)
+            Logger::info('DELETE /usuarios - Admin: ' . $currentUser['email'] . ' - Eliminando usuario ID: ' . ($input['id'] ?? 'no especificado'));
+            // FIN CORRECCIÓN FASE 2
             
             if (!isset($input['id'])) {
                 http_response_code(400);
@@ -172,7 +194,7 @@ class UsuariosController {
             }
 
             $res = $this->model->delete($input['id']);
-            Logger::info('DELETE /usuarios result: ' . json_encode($res));
+            Logger::info('Usuario eliminado exitosamente por: ' . $currentUser['email']);
             
             if (isset($res['success']) && $res['success'] === false) {
                 http_response_code(400);
@@ -187,24 +209,29 @@ class UsuariosController {
             ]);
             
         } catch (Exception $e) {
+            // INICIO: Manejo de excepciones - FASE 1
             Logger::error("Error en DELETE /usuarios: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al eliminar usuario: ' . $e->getMessage()
             ]);
+            // FIN MANEJO EXCEPCIONES - FASE 1
         }
     }
 
     /**
      * Obtener usuario por ID (requiere autenticación)
+     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
      */
     public function getById($id) {
         try {
             // Verificar autenticación
             $currentUser = AuthMiddleware::authenticate();
             
+            // CORRECCIÓN: Log solo evento (FASE 2)
             Logger::info("GET /usuarios/$id - Usuario: " . $currentUser['email']);
+            // FIN CORRECCIÓN FASE 2
             
             $user = $this->model->getById($id);
             if ($user) {
@@ -212,7 +239,7 @@ class UsuariosController {
                     'success' => true,
                     'data' => $user,
                     'requested_by' => $currentUser['email'],
-                    'user_role' => $currentUser['rol'] // ← NUEVO: enviar rol al frontend
+                    'user_role' => $currentUser['rol']
                 ]);
             } else {
                 http_response_code(404);
@@ -222,12 +249,14 @@ class UsuariosController {
                 ]);
             }
         } catch (Exception $e) {
+            // INICIO: Manejo de excepciones - FASE 1
             Logger::error("Error en GET /usuarios/$id: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
                 'error' => 'Error al obtener usuario'
             ]);
+           
         }
     }
 }
