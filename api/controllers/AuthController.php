@@ -13,7 +13,6 @@ class AuthController {
 
     /**
      * Registro de nuevo usuario
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
      */
     public function register() {
         try {
@@ -91,20 +90,20 @@ class AuthController {
             }
 
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones 
             http_response_code(500);
             Logger::error("Excepción en registro: " . $e->getMessage());
             echo json_encode([
                 'success' => false,
                 'error' => 'Error interno del servidor en registro'
             ]);
-            // FIN MANEJO EXCEPCIONES - FASE 1
+            
         }
     }
 
     /**
      * Login de usuario
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
+    
      */
     public function login() {
         try {
@@ -159,20 +158,20 @@ class AuthController {
             }
 
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones 
             http_response_code(500);
             Logger::error("Excepción en login: " . $e->getMessage());
             echo json_encode([
                 'success' => false,
                 'error' => 'Error interno del servidor en login'
             ]);
-            // FIN MANEJO EXCEPCIONES - FASE 1
+            // FIN MANEJO EXCEPCIONES 
         }
     }
 
     /**
      * Logout de usuario  
-     * INICIO BLOQUE TRY/CATCH - FASE 1 (+20 puntos)
+     * INICIO BLOQUE TRY/CATC (+20 puntos)
      */
     public function logout() {
         try {
@@ -199,14 +198,14 @@ class AuthController {
             }
 
         } catch (Exception $e) {
-            // INICIO: Manejo de excepciones - FASE 1
+            // INICIO: Manejo de excepciones
             http_response_code(500);
             Logger::error("Excepción en logout: " . $e->getMessage());
             echo json_encode([
                 'success' => false,
                 'error' => 'Error interno del servidor en logout'
             ]);
-            // FIN MANEJO EXCEPCIONES - FASE 1
+            // FIN MANEJO EXCEPCIONES
         }
     }
 
