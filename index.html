@@ -60,18 +60,17 @@
     
     <!-- NUEVO ENCABEZADO MODERNO -->
     <header class="mb-12">
-      <div class="flex items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700 header-glow">
-        <!-- Logo a la izquierda -->
-        <div class="flex items-center gap-4">
-          <div class="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600">
-            <div class="text-2xl">⚡</div>
+       <div class="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700">
+        <!-- Logo más pequeño -->
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600">
+            <div class="text-xl">⚡</div>
           </div>
           <div>
-            <h1 class="text-2xl font-black text-white glow-text">CATALINA API</h1>
-            <p class="text-slate-400 text-sm">Sistema de Gestión de Usuarios</p>
+            <h1 class="text-xl font-black text-white">CATALINA API</h1>
+            <p class="text-slate-400 text-xs">Sistema de Gestión</p>
           </div>
         </div>
-
         <!-- Información del usuario a la derecha -->
         <div class="flex items-center gap-4">
           <div id="userBadge" class="user-badge text-white flex items-center gap-3">
@@ -301,7 +300,7 @@
   </div>
 
     <script>
-    // Configuración base de la API - CORREGIDA para puerto 81
+    // Configuración de la API - Puerto 81 para evitar conflictos con otros servicios
     const API_BASE_URL = 'http://localhost:81/restapicata/api';
 
     // Sistema de autenticación para index.html
