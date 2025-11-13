@@ -1156,7 +1156,10 @@ GET http://localhost:81/restapicata/api/stats
 
 ## 🎥 Video 
 
-Uploading VideoAPI.mp4…
+
+
+https://github.com/user-attachments/assets/1ac12b05-2119-4199-8f18-466f02ffae75
+
 
 
 El video demuestra el flujo completo de la aplicación:
