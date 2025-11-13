@@ -4,13 +4,20 @@
 require_once __DIR__ . '/../models/Usuarios.php';
 require_once __DIR__ . '/../config/logger.php';
 
+/**
+ * Middleware de autenticación y control de acceso por roles
+ * - Verifica tokens de sesión
+ * - Valida permisos de administrador
+ * - Registra eventos de seguridad
+ */
+
 class AuthMiddleware {
     
     /**
      * Verifica si el usuario está autenticado mediante token de sesión
      * @return array Datos del usuario si está autenticado
      */
-    public static function authenticate() {
+     public static function authenticate() {
         // Obtener el token del header Authorization
         $headers = getallheaders();
         $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
@@ -77,8 +84,9 @@ class AuthMiddleware {
         exit;
     }
     
-    /**
+     /**
      * Middleware para verificar rol de administrador
+     * Retorna 403 Forbidden si el usuario no es administrador
      */
     public static function requireAdmin() {
         $user = self::authenticate();
