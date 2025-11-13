@@ -1,6 +1,13 @@
 <?php
 // config/logger.php
 
+/**
+ * Sistema centralizado de logs para la API REST
+ * - Registra eventos importantes sin datos sensibles
+ * - Rotación automática para evitar archivos muy grandes
+ * - Múltiples niveles: INFO, WARN, ERROR
+ */
+
 class Logger {
     private static $logFile = null;
 
