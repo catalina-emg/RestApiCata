@@ -1156,6 +1156,9 @@ GET http://localhost:81/restapicata/api/stats
 
 ## 🎥 Video 
 
+Uploading VideoAPI.mp4…
+
+
 El video demuestra el flujo completo de la aplicación:
 
 1. **Login**: El usuario se autentica con credenciales válidas
